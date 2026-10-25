@@ -1,78 +1,209 @@
 <!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1220">
-  <title>Ordena — visualizador de algoritmos</title>
-  <link rel="stylesheet" href="web/style.css">
-</head>
-<body>
-  <main class="shell">
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="Ordena, início"><span class="brand-mark">O</span><span>ordena<span class="brand-dot">.</span></span></a>
-      <div class="engine-status"><span class="status-dot" id="statusDot"></span><span id="engineStatus">Carregando motor…</span></div>
-    </header>
-
-    <section class="intro">
-      <p class="eyebrow">LABORATÓRIO DE ALGORITMOS</p>
-      <h1>Veja a lógica<br><em>ganhar forma.</em></h1>
-      <p class="lede">Explore como diferentes algoritmos organizam os mesmos dados, comparação por comparação.</p>
-    </section>
-
-    <section class="workspace" aria-label="Visualizador">
-      <aside class="controls">
-        <div class="control-section">
-          <label class="section-label" for="algorithm">ALGORITMO</label>
-          <select id="algorithm">
-            <option value="0">Bubble Sort</option><option value="1">Selection Sort</option>
-            <option value="2">Insertion Sort</option><option value="3">Quick Sort</option>
-            <option value="4">Merge Sort</option>
-          </select>
-          <p class="algorithm-note" id="algorithmNote">Percorre a lista repetidamente, trocando vizinhos fora de ordem.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1220" />
+    <title>Ordena — visualizador de algoritmos</title>
+    <link rel="stylesheet" href="web/style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Ordena, início"
+          ><span class="brand-mark">O</span
+          ><span>ordena<span class="brand-dot">.</span></span></a
+        >
+        <div class="engine-status">
+          <span class="status-dot" id="statusDot"></span
+          ><span id="engineStatus">Carregando motor…</span>
         </div>
-        <div class="control-section">
-          <label class="section-label" for="sequenceCount">QUANTIDADE DE NÚMEROS</label>
-          <input id="sequenceCount" class="number-input" type="number" min="2" max="128" step="1" value="9" inputmode="numeric">
-          <p class="input-hint">Informe de 2 a 128 números para gerar uma sequência.</p>
-        </div>
-        <div class="control-section">
-          <label class="section-label" for="sequenceInput">SUA SEQUÊNCIA</label>
-          <textarea id="sequenceInput" rows="3" spellcheck="false" aria-describedby="sequenceHint sequenceError">8, 3, 6, 1, 9, 2, 5, 4, 7</textarea>
-          <p class="input-hint" id="sequenceHint">Ou informe seus próprios valores separados por espaço, vírgula ou ponto e vírgula.</p>
-          <p class="input-error" id="sequenceError" role="alert" hidden></p>
-          <div class="sequence-presets" role="group" aria-label="Gerar sequência ordenada">
-            <button class="apply-button" id="ascendingSequence" type="button">Gerar 1 → n</button>
-            <button class="apply-button" id="descendingSequence" type="button">Gerar n → 1</button>
+      </header>
+
+      <section class="intro">
+        <p class="eyebrow">LABORATÓRIO DE ALGORITMOS</p>
+        <h1>Veja a lógica<br /><em>ganhar forma.</em></h1>
+        <p class="lede">
+          Explore como diferentes algoritmos organizam os mesmos dados,
+          comparação por comparação.
+        </p>
+      </section>
+
+      <section class="workspace" aria-label="Visualizador">
+        <aside class="controls">
+          <div class="control-section">
+            <label class="section-label" for="algorithm">ALGORITMO</label>
+            <select id="algorithm">
+              <option value="0">Bubble Sort</option>
+              <option value="1">Selection Sort</option>
+              <option value="2">Insertion Sort</option>
+              <option value="3">Quick Sort</option>
+              <option value="4">Merge Sort</option>
+            </select>
+            <p class="algorithm-note" id="algorithmNote">
+              Percorre a lista repetidamente, trocando vizinhos fora de ordem.
+            </p>
           </div>
-          <button class="apply-button" id="applySequence">Aplicar sequência</button>
-        </div>
-        <button class="primary" id="sortButton"><span>▶</span> Ordenar</button>
-        <div class="player" aria-label="Controles de animação">
-          <button id="playButton" class="icon-button" title="Reproduzir" aria-label="Reproduzir">▶</button>
-          <button id="stepBack" class="icon-button" title="Voltar um passo" aria-label="Voltar um passo">‹</button>
-          <button id="stepForward" class="icon-button" title="Avançar um passo" aria-label="Avançar um passo">›</button>
-          <button id="resetButton" class="icon-button" title="Reiniciar" aria-label="Reiniciar">↺</button>
-          <label class="sr-only" for="speed">Velocidade</label><input id="speed" type="range" min="1" max="100" value="55">
-          <span class="speed-label">VELOCIDADE</span>
-        </div>
-        <div class="legend"><span><i class="key key-active"></i>Em foco</span><span><i class="key key-done"></i>Ordenado</span></div>
-      </aside>
+          <div class="control-section">
+            <label class="section-label" for="sequenceCount"
+              >QUANTIDADE DE NÚMEROS</label
+            >
+            <input
+              id="sequenceCount"
+              class="number-input"
+              type="number"
+              min="2"
+              max="128"
+              step="1"
+              value="9"
+              inputmode="numeric"
+            />
+            <p class="input-hint">
+              Informe de 2 a 128 números para gerar uma sequência.
+            </p>
+          </div>
+          <div class="control-section">
+            <label class="section-label" for="sequenceInput"
+              >SUA SEQUÊNCIA</label
+            >
+            <textarea
+              id="sequenceInput"
+              rows="3"
+              spellcheck="false"
+              aria-describedby="sequenceHint sequenceError"
+            >
+              8, 3, 6, 1, 9, 2, 5, 4, 7</textarea
+            >
+            <p class="input-hint" id="sequenceHint">
+              Ou informe seus próprios valores separados por espaço, vírgula ou
+              ponto e vírgula.
+            </p>
+            <p class="input-error" id="sequenceError" role="alert" hidden></p>
+            <div
+              class="sequence-presets"
+              role="group"
+              aria-label="Gerar sequência ordenada"
+            >
+              <button class="apply-button" id="ascendingSequence" type="button">
+                Gerar 1 → n
+              </button>
+              <button
+                class="apply-button"
+                id="descendingSequence"
+                type="button"
+              >
+                Gerar n → 1
+              </button>
+            </div>
+            <button class="apply-button" id="applySequence">
+              Aplicar sequência
+            </button>
+          </div>
+          <button class="primary" id="sortButton">
+            <span>▶</span> Ordenar
+          </button>
+          <div class="player" aria-label="Controles de animação">
+            <button
+              id="playButton"
+              class="icon-button"
+              title="Reproduzir"
+              aria-label="Reproduzir"
+            >
+              ▶
+            </button>
+            <button
+              id="stepBack"
+              class="icon-button"
+              title="Voltar um passo"
+              aria-label="Voltar um passo"
+            >
+              ‹
+            </button>
+            <button
+              id="stepForward"
+              class="icon-button"
+              title="Avançar um passo"
+              aria-label="Avançar um passo"
+            >
+              ›
+            </button>
+            <button
+              id="resetButton"
+              class="icon-button"
+              title="Reiniciar"
+              aria-label="Reiniciar"
+            >
+              ↺
+            </button>
+            <label class="sr-only" for="speed">Velocidade</label
+            ><input id="speed" type="range" min="1" max="100" value="55" />
+            <span class="speed-label">VELOCIDADE</span>
+          </div>
+          <div class="legend">
+            <span><i class="key key-active"></i>Em foco</span
+            ><span><i class="key key-done"></i>Ordenado</span>
+          </div>
+        </aside>
 
-      <div class="visual-panel">
-        <div class="chart-heading"><div><span class="section-label">VISUALIZAÇÃO</span><span id="stepLabel" class="step-label">Pronto para começar</span></div><button id="shuffleButton" class="text-button">↻&nbsp; Reaplicar sequência</button></div>
-        <div class="chart-wrap"><canvas id="chart" aria-label="Barras que representam os valores do vetor"></canvas><div id="emptyState" class="empty-state" hidden>Pressione <b>Ordenar</b> para assistir.</div></div>
-        <div class="metrics">
-          <div class="metric"><span class="metric-label">COMPARAÇÕES</span><strong id="comparisons">0</strong><span class="metric-hint">pares avaliados</span></div>
-          <div class="metric"><span class="metric-label">TROCAS / MOVIMENTOS</span><strong id="swaps">0</strong><span class="metric-hint">deslocamentos e escritas incluídos</span></div>
-          <div class="metric"><span class="metric-label">TEMPO DE EXECUÇÃO</span><strong><span id="time">0.00</span><small>ms</small></strong><span class="metric-hint">no motor de ordenação</span></div>
-          <div class="metric"><span class="metric-label">PROGRESSO</span><strong id="progress">0<span class="percent">%</span></strong><span class="progress-track"><i id="progressBar"></i></span></div>
+        <div class="visual-panel">
+          <div class="chart-heading">
+            <div>
+              <span class="section-label">VISUALIZAÇÃO</span
+              ><span id="stepLabel" class="step-label"
+                >Pronto para começar</span
+              >
+            </div>
+            <button id="shuffleButton" class="text-button">
+              ↻&nbsp; Reaplicar sequência
+            </button>
+          </div>
+          <div class="chart-wrap">
+            <canvas
+              id="chart"
+              aria-label="Barras que representam os valores do vetor"
+            ></canvas>
+            <div id="emptyState" class="empty-state" hidden>
+              Pressione <b>Ordenar</b> para assistir.
+            </div>
+          </div>
+          <div class="metrics">
+            <div class="metric">
+              <span class="metric-label">COMPARAÇÕES</span
+              ><strong id="comparisons">0</strong
+              ><span class="metric-hint">pares avaliados</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">TROCAS / MOVIMENTOS</span
+              ><strong id="swaps">0</strong
+              ><span class="metric-hint"
+                >deslocamentos e escritas incluídos</span
+              >
+            </div>
+            <div class="metric">
+              <span class="metric-label">TEMPO DE EXECUÇÃO</span
+              ><strong><span id="time">0.00</span><small>ms</small></strong
+              ><span class="metric-hint">no motor de ordenação</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">PROGRESSO</span
+              ><strong id="progress">0<span class="percent">%</span></strong
+              ><span class="progress-track"><i id="progressBar"></i></span>
+            </div>
+          </div>
+          <div class="timeline">
+            <span>INÍCIO</span
+            ><input id="timeline" type="range" min="0" max="0" value="0" /><span
+              id="timelineEnd"
+              >FIM</span
+            >
+          </div>
         </div>
-        <div class="timeline"><span>INÍCIO</span><input id="timeline" type="range" min="0" max="0" value="0"><span id="timelineEnd">FIM</span></div>
-      </div>
-    </section>
-    <footer><span>Feito para curiosos de todos os tamanhos.</span><span>Uma comparação de cada vez <b>✳</b></span></footer>
-  </main>
-  <script src="web/app.js"></script>
-</body>
+      </section>
+      <footer>
+        <span>Feito para curiosos de todos os tamanhos.</span
+        ><span>Uma comparação de cada vez <b>✳</b></span>
+      </footer>
+    </main>
+    <script src="web/app.js"></script>
+  </body>
 </html>
