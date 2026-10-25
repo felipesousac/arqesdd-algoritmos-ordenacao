@@ -32,10 +32,19 @@
           <p class="algorithm-note" id="algorithmNote">Percorre a lista repetidamente, trocando vizinhos fora de ordem.</p>
         </div>
         <div class="control-section">
+          <label class="section-label" for="sequenceCount">QUANTIDADE DE NÚMEROS</label>
+          <input id="sequenceCount" class="number-input" type="number" min="2" max="128" step="1" value="9" inputmode="numeric">
+          <p class="input-hint">Informe de 2 a 128 números para gerar uma sequência.</p>
+        </div>
+        <div class="control-section">
           <label class="section-label" for="sequenceInput">SUA SEQUÊNCIA</label>
           <textarea id="sequenceInput" rows="3" spellcheck="false" aria-describedby="sequenceHint sequenceError">8, 3, 6, 1, 9, 2, 5, 4, 7</textarea>
-          <p class="input-hint" id="sequenceHint">Digite de 2 a 128 inteiros positivos, separados por espaço ou vírgula.</p>
+          <p class="input-hint" id="sequenceHint">Ou informe seus próprios valores separados por espaço, vírgula ou ponto e vírgula.</p>
           <p class="input-error" id="sequenceError" role="alert" hidden></p>
+          <div class="sequence-presets" role="group" aria-label="Gerar sequência ordenada">
+            <button class="apply-button" id="ascendingSequence" type="button">Gerar 1 → n</button>
+            <button class="apply-button" id="descendingSequence" type="button">Gerar n → 1</button>
+          </div>
           <button class="apply-button" id="applySequence">Aplicar sequência</button>
         </div>
         <button class="primary" id="sortButton"><span>▶</span> Ordenar</button>

@@ -5,10 +5,10 @@ EXPORTS = "['_malloc','_free','_sort_run','_sort_values','_sort_metrics','_sort_
 .PHONY: all wasm serve clean native
 all: wasm
 
-# `make` remains useful without Emscripten: the UI has a JS demonstration mode.
+# The browser imports the generated glue as an ES module.
 wasm:
 	@if ! command -v $(EMCC) >/dev/null 2>&1; then \
-		echo "Emscripten (emcc) não encontrado. A interface pode rodar em modo demonstração; veja README.md para instalar o SDK."; \
+		echo "Emscripten (emcc) não encontrado. Instale/ative o SDK para compilar o motor C/WebAssembly; veja README.md."; \
 		exit 0; \
 	fi
 	$(MAKE) web/sort_engine.js EMCC='$(EMCC)'
@@ -16,8 +16,8 @@ wasm:
 serve:
 	python3 -m http.server 8000
 
-web/sort_engine.js: src/sort_engine.c
-	$(EMCC) $(CFLAGS) $< -o $@ -s MODULARIZE=1 -s EXPORT_NAME=SortEngine -s ENVIRONMENT=web -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=$(EXPORTS) -s EXPORTED_RUNTIME_METHODS='[]'
+web/sort_engine.js: src/sort_engine.c Makefile
+	$(EMCC) $(CFLAGS) $< -o $@ -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORT_NAME=SortEngine -s ENVIRONMENT=web -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=$(EXPORTS) -s EXPORTED_RUNTIME_METHODS='["HEAP32","HEAPF64"]'
 
 native: build/sort_engine
 

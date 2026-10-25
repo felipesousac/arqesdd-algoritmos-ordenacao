@@ -113,10 +113,11 @@ Abra [http://localhost:8000](http://localhost:8000) no navegador. Pressione `Ctr
 
 ## Uso do visualizador
 
-1. Digite de 2 a 128 inteiros positivos entre 1 e 1.000.000 no campo **Sua sequência**. Separe os valores por vírgula, espaço ou ponto e vírgula.
-2. Escolha o algoritmo.
-3. Clique em **Aplicar sequência** para atualizar a visualização, ou em **Ordenar** para validar e começar diretamente.
-4. Use os controles do player para pausar, avançar, voltar, alterar a velocidade ou reiniciar a reprodução.
+1. Para gerar uma sequência ordenada, informe uma quantidade de 2 a 128 no campo **Quantidade de números** e selecione **Gerar 1 → n** ou **Gerar n → 1**. O campo de sequência será preenchido com `1, 2, ..., n` ou `n, ..., 2, 1`.
+2. Ou digite de 2 a 128 inteiros positivos entre 1 e 1.000.000 no campo **Sua sequência**, separados por vírgula, espaço ou ponto e vírgula.
+3. Escolha o algoritmo.
+4. Clique em **Aplicar sequência** para atualizar a visualização, ou em **Ordenar** para validar e começar diretamente.
+5. Use os controles do player para pausar, avançar, voltar, alterar a velocidade ou reiniciar a reprodução.
 
 O campo começa com uma sequência de exemplo que pode ser substituída. Reaplicar a sequência ou trocar o algoritmo mantém os valores informados.
 
@@ -126,7 +127,9 @@ O campo começa com uma sequência de exemplo que pode ser substituída. Reaplic
 - `make serve` inicia o servidor de desenvolvimento em `http://localhost:8000`.
 - `make clean` remove os arquivos gerados da compilação.
 
-Se `emcc` não estiver disponível, `make` avisa e não compila o módulo. A página então usa um modo de demonstração com versões JavaScript dos algoritmos. Nesse modo, a métrica de tempo se refere ao JavaScript. Se `emcc --version` funcionar num terminal e não em outro, ative o ambiente do SDK no terminal usado para rodar `make`.
+Os algoritmos de ordenação são implementados exclusivamente em C. O navegador executa o C compilado para WebAssembly; o JavaScript da página apenas prepara a entrada, chama o motor, lê o histórico de operações e anima os passos. Se `emcc` não estiver disponível, `make` avisa e não compila o módulo, e a interface não permite iniciar uma ordenação até que o motor WebAssembly esteja disponível. Se `emcc --version` funcionar num terminal e não em outro, ative o ambiente do SDK no terminal usado para rodar `make`.
+
+Para ativar ou recompilar o motor C, ative o ambiente do Emscripten (`source ~/emsdk/emsdk_env.sh`), vá à pasta do projeto e execute `make clean` seguido de `make`. Depois execute `make serve` e recarregue a página. O indicador no topo deve mostrar **Motor C / WebAssembly ativo**. O Python serve os arquivos localmente; ele não executa os algoritmos.
 
 ## Como o histórico é medido
 

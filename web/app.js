@@ -16,8 +16,17 @@
   async function loadEngine() {
     try {
       const factory = (await import('./sort_engine.js')).default;
-      wasm = await factory(); setStatus('Motor WebAssembly ativo', true);
-    } catch (_) { setStatus('Modo demonstração JavaScript', true); }
+      wasm = await factory();
+      setStatus('Motor C / WebAssembly ativo', true);
+      $('sortButton').disabled = false;
+    } catch (error) {
+      wasm = null;
+      setStatus('Motor C / WebAssembly indisponível', false);
+      $('sortButton').disabled = true;
+      $('sequenceError').textContent = 'Não foi possível carregar o motor C/WebAssembly. Compile o projeto com Emscripten e recarregue a página.';
+      $('sequenceError').hidden = false;
+      console.error('Falha ao carregar o motor C/WebAssembly:', error);
+    }
     applySequence();
   }
   function setStatus(text, ready) { $('engineStatus').textContent = text; $('statusDot').classList.toggle('ready', ready); }
@@ -42,6 +51,20 @@
   function applySequence() {
     const values = readSequence();
     if (!values) return;
+    initial = values;
+    resetVisualization();
+  }
+  function applyOrderedSequence(direction) {
+    const count = Number($('sequenceCount').value);
+    const error = !Number.isInteger(count) || count < 2 || count > 128
+      ? 'Informe uma quantidade inteira entre 2 e 128.'
+      : '';
+    $('sequenceError').textContent = error;
+    $('sequenceError').hidden = !error;
+    if (error) return;
+    const values = Array.from({ length: count }, (_, index) => direction > 0 ? index + 1 : count - index);
+    $('sequenceInput').value = values.join(', ');
+    $('sequenceInput').setAttribute('aria-invalid', 'false');
     initial = values;
     resetVisualization();
   }
@@ -70,22 +93,25 @@
     if(out.length===1 || out[out.length-1].values.join(',')!==sorted.join(','))out.push(finalFrame); else out[out.length-1]=finalFrame;
     wasm._sort_free(); return out;
   }
-  function runFallback() {
-    const arr=initial.slice(), out=[copyFrame(null,arr,Infinity)]; let c=0,s=0;
-    const push=(type,i,j)=>{out.push(Object.assign(copyFrame({type,i,j},arr,Infinity),{comparisons:c,swaps:s,time:0}));};
-    const cmp=(i,j)=>{c++;push(0,i,j);return arr[i]-arr[j];};
-    const swap=(i,j)=>{if(i===j)return;[arr[i],arr[j]]=[arr[j],arr[i]];s++;push(1,i,j);};
-    const a=+$('algorithm').value, start=performance.now();
-    if(a===0){for(let e=arr.length-1;e>0;e--){let changed=false;for(let i=0;i<e;i++)if(cmp(i+1,i)<0){swap(i,i+1);changed=true;}if(!changed)break;}}
-    if(a===1){for(let i=0;i<arr.length-1;i++){let m=i;for(let j=i+1;j<arr.length;j++)if(cmp(j,m)<0)m=j;swap(i,m);}}
-    if(a===2){for(let i=1;i<arr.length;i++){let key=arr[i],j=i-1;while(j>=0){c++;push(0,j,i);if(arr[j]<=key)break;arr[j+1]=arr[j];push(2,j+1,-1);j--;}if(j+1!==i){arr[j+1]=key;push(2,j+1,-1);}}}
-    if(a===3){const q=(lo,hi)=>{if(lo>=hi)return;let pivot=arr[hi],i=lo;for(let j=lo;j<hi;j++){c++;push(0,j,hi);if(arr[j]<=pivot)swap(i++,j);}swap(i,hi);q(lo,i-1);q(i+1,hi);};q(0,arr.length-1);}
-    if(a===4){const m=(lo,hi)=>{if(hi-lo<2)return;let mid=(lo+hi)>>1;m(lo,mid);m(mid,hi);let x=arr.slice(lo,mid),y=arr.slice(mid,hi),i=0,j=0;while(i<x.length&&j<y.length){c++;push(0,lo+i,mid+j);arr[lo+i+j]=x[i]<=y[j]?x[i++]:y[j++];push(2,lo+i+j-1,-1);}while(i<x.length){arr[lo+i+j]=x[i++];push(2,lo+i+j-1,-1);}while(j<y.length){arr[lo+i+j]=y[j++];push(2,lo+i+j-1,-1);}};m(0,arr.length);}
-    const elapsed=performance.now()-start;out.forEach(f=>{f.time=elapsed*out.indexOf(f)/Math.max(1,out.length-1);});
-    out[out.length-1]=Object.assign(copyFrame(null,arr,0),{comparisons:c,swaps:s,time:elapsed}); return out;
-  }
   function startSort() {
-    stop(); frames = wasm ? runWasm() : runFallback(); cursor = 0; $('timeline').max = Math.max(0,frames.length-1); $('timelineEnd').textContent = `${frames.length-1} PASSOS`; $('emptyState').hidden = true;
+    if (!wasm) {
+      $('sequenceError').textContent = 'O motor C/WebAssembly não está disponível. Compile o projeto com Emscripten e recarregue a página.';
+      $('sequenceError').hidden = false;
+      return;
+    }
+    stop();
+    try {
+      frames = runWasm();
+    } catch (error) {
+      frames = null;
+      console.error('Falha ao executar o motor C/WebAssembly:', error);
+    }
+    if (!frames) {
+      $('sequenceError').textContent = 'O motor C/WebAssembly não conseguiu executar a ordenação.';
+      $('sequenceError').hidden = false;
+      return;
+    }
+    cursor = 0; $('timeline').max = Math.max(0,frames.length-1); $('timelineEnd').textContent = `${frames.length-1} PASSOS`; $('emptyState').hidden = true;
     $('stepLabel').textContent = `${names[+$('algorithm').value]} · ${frames.length-1} passos`; showFrame(0); play();
   }
   function showFrame(index) {
@@ -100,7 +126,7 @@
   }
   function stop(){if(timer){clearInterval(timer);timer=null;}$('playButton').textContent='▶';$('playButton').setAttribute('aria-label','Reproduzir');}
   function play(){if(!frames.length||cursor>=frames.length-1)return stop();stop();$('playButton').textContent='Ⅱ';$('playButton').setAttribute('aria-label','Pausar');timer=setInterval(()=>{if(cursor>=frames.length-1){stop();return;}showFrame(cursor+1);},Math.max(12,180-(+$('speed').value)*1.55));}
-  $('sortButton').addEventListener('click',()=>{const values=readSequence();if(values){initial=values;startSort();}});$('applySequence').addEventListener('click',applySequence);$('shuffleButton').addEventListener('click',applySequence);$('sequenceInput').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')applySequence();});$('resetButton').addEventListener('click',()=>{stop();showFrame(0);});$('playButton').addEventListener('click',()=>timer?stop():play());$('stepBack').addEventListener('click',()=>{stop();showFrame(cursor-1);});$('stepForward').addEventListener('click',()=>{stop();showFrame(cursor+1);});$('timeline').addEventListener('input',e=>{stop();showFrame(+e.target.value);});
+  $('sortButton').addEventListener('click',()=>{const values=readSequence();if(values){initial=values;startSort();}});$('applySequence').addEventListener('click',applySequence);$('ascendingSequence').addEventListener('click',()=>applyOrderedSequence(1));$('descendingSequence').addEventListener('click',()=>applyOrderedSequence(-1));$('shuffleButton').addEventListener('click',applySequence);$('sequenceInput').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')applySequence();});$('resetButton').addEventListener('click',()=>{stop();showFrame(0);});$('playButton').addEventListener('click',()=>timer?stop():play());$('stepBack').addEventListener('click',()=>{stop();showFrame(cursor-1);});$('stepForward').addEventListener('click',()=>{stop();showFrame(cursor+1);});$('timeline').addEventListener('input',e=>{stop();showFrame(+e.target.value);});
   $('algorithm').addEventListener('change',e=>{$('algorithmNote').textContent=descriptions[+e.target.value];resetVisualization();});window.addEventListener('resize',draw);
   loadEngine();
 })();
