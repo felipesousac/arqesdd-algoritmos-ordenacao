@@ -51,17 +51,22 @@ static void swap_at(int i, int j) {
   values[i] = b; values[j] = a; metrics.swaps++;
   record(SWAP, i, j, b, a);
 }
-static void write_at(int i, int value) {
+static void write_at(int i, int value, int count_as_swap) {
   values[i] = value;
-  record(WRITE, i, -1, value, 0);
+  if (count_as_swap) metrics.swaps++;
+  // For WRITE operations, b records whether this movement contributes to the
+  // swap/movement metric (insertion's final key placement is not counted).
+  record(WRITE, i, -1, value, count_as_swap);
 }
 
 static void bubble(void) {
-  for (int end = metrics.n - 1; end > 0; --end) {
-    int changed = 0;
-    for (int i = 0; i < end; ++i) if (less_at(i + 1, i)) { swap_at(i, i + 1); changed = 1; }
-    if (!changed) break;
-  }
+  int changed;
+  do {
+    changed = 0;
+    for (int i = 0; i < metrics.n - 1; ++i) {
+      if (less_at(i + 1, i)) { swap_at(i, i + 1); changed = 1; }
+    }
+  } while (changed);
 }
 static void selection(void) {
   for (int i = 0; i < metrics.n - 1; ++i) {
@@ -73,39 +78,38 @@ static void selection(void) {
 static void insertion(void) {
   for (int i = 1; i < metrics.n; ++i) {
     int key = values[i], j = i - 1;
-    while (j >= 0) { metrics.comparisons++; record(COMPARE, j, i, values[j], key); if (values[j] <= key) break; write_at(j + 1, values[j]); --j; }
-    if (j + 1 != i) write_at(j + 1, key);
+    while (j >= 0) { metrics.comparisons++; record(COMPARE, j, i, values[j], key); if (values[j] <= key) break; write_at(j + 1, values[j], 1); --j; }
+    if (j + 1 != i) write_at(j + 1, key, 0);
   }
 }
 static int partition(int low, int high) {
-  int pivot = values[high], i = low;
+  int pivot = values[high], i = low - 1;
   for (int j = low; j < high; ++j) {
     metrics.comparisons++; record(COMPARE, j, high, values[j], pivot);
-    if (values[j] <= pivot) swap_at(i++, j);
+    if (values[j] < pivot) { ++i; swap_at(i, j); }
   }
-  swap_at(i, high); return i;
+  swap_at(i + 1, high); return i + 1;
 }
 static void quick(int low, int high) {
-  while (low < high) {
-    int p = partition(low, high);
-    if (p - low < high - p) { quick(low, p - 1); low = p + 1; }
-    else { quick(p + 1, high); high = p - 1; }
-  }
+  if (low >= high) return;
+  int p = partition(low, high);
+  quick(low, p - 1);
+  quick(p + 1, high);
 }
 static void merge_range(int lo, int mid, int hi) {
-  int i = lo, j = mid, k = lo;
-  while (i < mid && j < hi) {
+  int i = lo, j = mid + 1, k = lo;
+  while (i <= mid && j <= hi) {
     metrics.comparisons++; record(COMPARE, i, j, values[i], values[j]);
     scratch[k++] = values[i] <= values[j] ? values[i++] : values[j++];
   }
-  while (i < mid) scratch[k++] = values[i++];
-  while (j < hi) scratch[k++] = values[j++];
-  for (k = lo; k < hi; ++k) write_at(k, scratch[k]);
+  while (i <= mid) scratch[k++] = values[i++];
+  while (j <= hi) scratch[k++] = values[j++];
+  for (k = lo; k <= hi; ++k) write_at(k, scratch[k], 1);
 }
 static void merge_sort(int lo, int hi) {
-  if (hi - lo < 2) return;
+  if (lo >= hi) return;
   int mid = lo + (hi - lo) / 2;
-  merge_sort(lo, mid); merge_sort(mid, hi); merge_range(lo, mid, hi);
+  merge_sort(lo, mid); merge_sort(mid + 1, hi); merge_range(lo, mid, hi);
 }
 
 EXPORT int sort_run(const int32_t *input, int n, int algorithm, int limit) {
@@ -115,7 +119,7 @@ EXPORT int sort_run(const int32_t *input, int n, int algorithm, int limit) {
   op_limit = limit > 0 && limit < MAX_OPS ? limit : MAX_OPS;
   memset(&metrics, 0, sizeof(metrics)); metrics.algorithm = algorithm; metrics.n = n;
   double start = now_ms();
-  switch (algorithm) { case 0: bubble(); break; case 1: selection(); break; case 2: insertion(); break; case 3: quick(0, n - 1); break; case 4: merge_sort(0, n); break; }
+  switch (algorithm) { case 0: bubble(); break; case 1: selection(); break; case 2: insertion(); break; case 3: quick(0, n - 1); break; case 4: merge_sort(0, n - 1); break; }
   metrics.elapsed_ms = now_ms() - start; metrics.op_count = op_count;
   return 1;
 }

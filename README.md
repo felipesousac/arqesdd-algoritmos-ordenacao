@@ -135,7 +135,7 @@ Para ativar ou recompilar o motor C, ative o ambiente do Emscripten (`source ~/e
 
 - O motor C aceita de 1 a 4096 inteiros e pode registrar até 2 milhões de operações por execução. A interface limita a entrada a 128 valores para manter a animação fluida.
 - As operações são comparação (`COMPARE=0`), troca (`SWAP=1`) e escrita (`WRITE=2`). Insertion e Merge registram deslocamentos e cópias como escritas, não como trocas.
-- Comparações contam avaliações entre valores; trocas contam mudanças efetivas de posição.
+- Comparações contam avaliações entre valores. A métrica **trocas/movimentos** conta trocas efetivas em Bubble, Selection e Quick; deslocamentos em Insertion; e escritas de volta no vetor em Merge, seguindo as convenções do projeto de referência.
 - O tempo do Wasm mede a execução do algoritmo C com `emscripten_get_now()`, sem incluir a renderização nem a leitura do histórico.
 - Se o limite do histórico for atingido, a ordenação e as métricas continuam corretas, mas operações excedentes não aparecem na animação.
 

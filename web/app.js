@@ -85,7 +85,7 @@
       const p=hp+k*obytes, type=wasm.HEAP32[p>>2], i=wasm.HEAP32[(p+4)>>2], j=wasm.HEAP32[(p+8)>>2];
       if(type===0)c++;
       if(type===1){s++; [arr[i],arr[j]]=[arr[j],arr[i]];}
-      if(type===2)arr[i]=wasm.HEAP32[(p+12)>>2];
+      if(type===2){arr[i]=wasm.HEAP32[(p+12)>>2];if(wasm.HEAP32[(p+16)>>2])s++;}
       const frame=copyFrame({type,i,j},arr,Infinity);
       frame.comparisons=c;frame.swaps=s;frame.time=elapsed*k/Math.max(1,total);out.push(frame);
     }
