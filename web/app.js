@@ -38,7 +38,6 @@
 
   // Current engine and animation state -----------------------------------
 
-  let sortingEngine = null;
   let initialValues = [];
   let animationFrames = [];
   let currentFrameIndex = 0;
@@ -47,27 +46,11 @@
   let highlightedIndices = [];
   let sortedFromIndex = Infinity;
 
-  // Engine loading and status --------------------------------------------
+  // API status ------------------------------------------------------------
 
-  async function loadSortingEngine() {
-    try {
-      const engineModule = await import('./sort_engine.js');
-      sortingEngine = await engineModule.default();
-
-      setEngineStatus('Motor C / WebAssembly ativo', true);
-      element('sortButton').disabled = false;
-    } catch (error) {
-      sortingEngine = null;
-
-      setEngineStatus('Motor C / WebAssembly indisponível', false);
-      element('sortButton').disabled = true;
-      element('sequenceError').textContent =
-        'Não foi possível carregar o motor C/WebAssembly. Compile o projeto com Emscripten e recarregue a página.';
-      element('sequenceError').hidden = false;
-
-      console.error('Falha ao carregar o motor C/WebAssembly:', error);
-    }
-
+  function loadSortingEngine() {
+    setEngineStatus('API C pronta', true);
+    element('sortButton').disabled = false;
     applySequence();
   }
 
@@ -140,7 +123,7 @@
     resetVisualization();
   }
 
-  // Running C through WebAssembly ----------------------------------------
+  // Consume the sorting history returned by the C API --------------------
 
   function createFrame(operation, values, sortedFrom) {
     return {
@@ -150,142 +133,104 @@
     };
   }
 
-  function createAnimationFromWasm() {
-    const operationBytes = 20;
-    const inputPointer = sortingEngine._malloc(initialValues.length * 4);
-    if (!inputPointer) {
-      return null;
-    }
-
-    sortingEngine.HEAP32.set(initialValues, inputPointer >> 2);
-    const sortSucceeded = sortingEngine._sort_run(
-      inputPointer,
-      initialValues.length,
-      Number(element('algorithm').value),
-      2000000
-    );
-    sortingEngine._free(inputPointer);
-
-    if (!sortSucceeded) {
-      return null;
-    }
-
-    const metricsPointer = sortingEngine._sort_metrics();
-    const operationsPointer = sortingEngine._sort_operations();
-
-    const itemCount = sortingEngine.HEAP32[(metricsPointer + 4) >> 2];
-    const comparisons = readInt64(metricsPointer + 8);
-    const swaps = readInt64(metricsPointer + 16);
-    const elapsedMs = sortingEngine.HEAPF64[(metricsPointer + 24) >> 3];
-    const operationCount = sortingEngine.HEAP32[(metricsPointer + 32) >> 2];
-
-    const sortedValuesPointer = sortingEngine._sort_values();
-    const sortedValues = Array.from(
-      sortingEngine.HEAP32.subarray(
-        sortedValuesPointer >> 2,
-        (sortedValuesPointer >> 2) + itemCount
-      )
-    );
-
-    const frames = [createFrame(null, initialValues, Infinity)];
-    const valuesAtFrame = initialValues.slice();
+  function createAnimationFromHistory(history) {
+    const frames = [createFrame(null, history.input, Infinity)];
+    const valuesAtFrame = history.input.slice();
     let comparisonCount = 0;
     let swapAndMovementCount = 0;
+    const operations = history.operations || [];
 
-    for (let operationIndex = 0; operationIndex < operationCount; operationIndex++) {
-      const operationPointer =
-        operationsPointer + operationIndex * operationBytes;
-      const operationType = sortingEngine.HEAP32[operationPointer >> 2];
-      const firstIndex = sortingEngine.HEAP32[(operationPointer + 4) >> 2];
-      const secondIndex = sortingEngine.HEAP32[(operationPointer + 8) >> 2];
-
-      if (operationType === OperationType.COMPARE) {
+    operations.forEach((operation, operationIndex) => {
+      if (operation.type === OperationType.COMPARE) {
         comparisonCount++;
-      } else if (operationType === OperationType.SWAP) {
+      } else if (operation.type === OperationType.SWAP) {
         swapAndMovementCount++;
-        [valuesAtFrame[firstIndex], valuesAtFrame[secondIndex]] = [
-          valuesAtFrame[secondIndex],
-          valuesAtFrame[firstIndex]
+        [
+          valuesAtFrame[operation.firstIndex],
+          valuesAtFrame[operation.secondIndex]
+        ] = [
+          valuesAtFrame[operation.secondIndex],
+          valuesAtFrame[operation.firstIndex]
         ];
-      } else if (operationType === OperationType.WRITE) {
-        valuesAtFrame[firstIndex] =
-          sortingEngine.HEAP32[(operationPointer + 12) >> 2];
-
-        const countsAsMovement =
-          sortingEngine.HEAP32[(operationPointer + 16) >> 2];
-        if (countsAsMovement) {
+      } else if (operation.type === OperationType.WRITE) {
+        valuesAtFrame[operation.firstIndex] = operation.firstValue;
+        if (operation.secondValue) {
           swapAndMovementCount++;
         }
       }
 
       const frame = createFrame(
-        { type: operationType, i: firstIndex, j: secondIndex },
+        {
+          type: operation.type,
+          i: operation.firstIndex,
+          j: operation.secondIndex
+        },
         valuesAtFrame,
         Infinity
       );
       frame.comparisons = comparisonCount;
       frame.swaps = swapAndMovementCount;
-      frame.time = (elapsedMs * operationIndex) / Math.max(1, operationCount);
+      frame.time =
+        (history.metrics.elapsedMs * (operationIndex + 1)) /
+        Math.max(1, operations.length);
       frames.push(frame);
-    }
+    });
 
-    const finalFrame = createFrame(null, sortedValues, 0);
-    finalFrame.comparisons = comparisons;
-    finalFrame.swaps = swaps;
-    finalFrame.time = elapsedMs;
-
+    const finalFrame = createFrame(null, history.sorted, 0);
+    finalFrame.comparisons = history.metrics.comparisons;
+    finalFrame.swaps = history.metrics.swaps;
+    finalFrame.time = history.metrics.elapsedMs;
     const lastFrame = frames[frames.length - 1];
-    if (frames.length === 1 || !sameValues(lastFrame.values, sortedValues)) {
+    if (frames.length === 1 || !sameValues(lastFrame.values, history.sorted)) {
       frames.push(finalFrame);
     } else {
       frames[frames.length - 1] = finalFrame;
     }
-
-    sortingEngine._sort_free();
     return frames;
-  }
-
-  function readInt64(pointer) {
-    const lowWord = sortingEngine.HEAP32[pointer >> 2];
-    const highWord = sortingEngine.HEAP32[(pointer + 4) >> 2];
-    return Number(lowWord) + Number(highWord) * 4294967296;
   }
 
   function sameValues(first, second) {
     return first.join(',') === second.join(',');
   }
 
-  function startSorting() {
-    if (!sortingEngine) {
-      element('sequenceError').textContent =
-        'O motor C/WebAssembly não está disponível. Compile o projeto com Emscripten e recarregue a página.';
-      element('sequenceError').hidden = false;
+  async function startSorting() {
+    const values = readSequenceFromInput();
+    if (!values) {
       return;
     }
 
+    initialValues = values;
     stopPlayback();
-
+    element('sortButton').disabled = true;
     try {
-      animationFrames = createAnimationFromWasm();
-    } catch (error) {
-      animationFrames = null;
-      console.error('Falha ao executar o motor C/WebAssembly:', error);
-    }
+      const query = new URLSearchParams({
+        algorithm: element('algorithm').value,
+        values: values.join(',')
+      });
+      const response = await fetch(`/api/sort?${query}`);
+      const history = await response.json();
+      if (!response.ok) {
+        throw new Error(history.error || 'Falha na API de ordenação.');
+      }
 
-    if (!animationFrames) {
+      animationFrames = createAnimationFromHistory(history);
+    } catch (error) {
+      animationFrames = [];
       element('sequenceError').textContent =
-        'O motor C/WebAssembly não conseguiu executar a ordenação.';
+        `Não foi possível obter o histórico da API C. ${error.message}`;
       element('sequenceError').hidden = false;
       return;
+    } finally {
+      element('sortButton').disabled = false;
     }
-
     currentFrameIndex = 0;
     element('timeline').max = Math.max(0, animationFrames.length - 1);
     element('timelineEnd').textContent = `${animationFrames.length - 1} PASSOS`;
     element('emptyState').hidden = true;
     element('stepLabel').textContent =
-      `${algorithmNames[Number(element('algorithm').value)]} · ${animationFrames.length - 1} passos`;
-
+      `${algorithmNames[Number(element('algorithm').value)]} · ${
+        animationFrames.length - 1
+      } passos`;
     showFrame(0);
     playPlayback();
   }

@@ -2,54 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#define EXPORT EMSCRIPTEN_KEEPALIVE
-
-static double current_time_ms(void) {
-  return emscripten_get_now();
-}
-#else
-#define EXPORT
+#include "sort_engine.h"
 
 static double current_time_ms(void) {
   return (double)clock() * 1000.0 / CLOCKS_PER_SEC;
 }
-#endif
-
-enum OperationType {
-  OPERATION_COMPARE = 0,
-  OPERATION_SWAP = 1,
-  OPERATION_WRITE = 2
-};
-
-enum AlgorithmType {
-  ALGORITHM_BUBBLE = 0,
-  ALGORITHM_SELECTION = 1,
-  ALGORITHM_INSERTION = 2,
-  ALGORITHM_QUICK = 3,
-  ALGORITHM_MERGE = 4
-};
-
-/* Keep this field order in sync with the Operation reads in web/app.js. */
-typedef struct {
-  int32_t type;
-  int32_t first_index;
-  int32_t second_index;
-  int32_t first_value;
-  int32_t second_value;
-} Operation;
-
-/* Keep this field order in sync with the Metrics offsets in web/app.js. */
-typedef struct {
-  int32_t algorithm;
-  int32_t item_count;
-  int64_t comparisons;
-  int64_t swaps;
-  double elapsed_ms;
-  int32_t operation_count;
-} Metrics;
 
 #define MAX_ITEMS 4096
 #define MAX_OPERATIONS 2000000
@@ -292,9 +249,9 @@ static void run_selected_algorithm(int algorithm) {
   }
 }
 
-/* WebAssembly interface -------------------------------------------------- */
+/* Public sorting API ---------------------------------------------------- */
 
-EXPORT int sort_run(const int32_t *input, int item_count, int algorithm,
+int sort_run(const int32_t *input, int item_count, int algorithm,
                     int requested_operation_limit) {
   if (input == NULL || item_count < 1 || item_count > MAX_ITEMS ||
       algorithm < ALGORITHM_BUBBLE || algorithm > ALGORITHM_MERGE) {
@@ -316,19 +273,19 @@ EXPORT int sort_run(const int32_t *input, int item_count, int algorithm,
   return 1;
 }
 
-EXPORT int32_t *sort_values(void) {
+const int32_t *sort_values(void) {
   return values;
 }
 
-EXPORT Metrics *sort_metrics(void) {
+const Metrics *sort_metrics(void) {
   return &metrics;
 }
 
-EXPORT Operation *sort_operations(void) {
+const Operation *sort_operations(void) {
   return operations;
 }
 
-EXPORT void sort_free(void) {
+void sort_free(void) {
   free(operations);
   operations = NULL;
   operation_count = 0;
