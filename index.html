@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b1220" />
-    <title>Ordena — visualizador de algoritmos</title>
+    <title>Ordena — Plataforma de Análise de Estruturas e Algoritmos</title>
     <link rel="stylesheet" href="web/style.css" />
   </head>
   <body>
@@ -19,15 +19,6 @@
           ><span id="engineStatus">Conectando à API…</span>
         </div>
       </header>
-
-      <!-- <section class="intro">
-        <p class="eyebrow">LABORATÓRIO DE ALGORITMOS</p>
-        <h1>Veja a lógica<br /><em>ganhar forma.</em></h1>
-        <p class="lede">
-          Explore como diferentes algoritmos organizam os mesmos dados,
-          comparação por comparação.
-        </p>
-      </section> -->
 
       <section class="workspace" aria-label="Visualizador">
         <aside class="controls">
@@ -44,6 +35,31 @@
               Percorre a lista repetidamente, trocando vizinhos fora de ordem.
             </p>
           </div>
+
+          <div class="control-section">
+            <label class="section-label" for="structure"
+              >ESTRUTURA DE DADOS LINEAR</label
+            >
+            <select id="structure">
+              <option value="0">
+                Lista Sequencial (Vetor Dinâmico Contíguo)
+              </option>
+              <option value="1">
+                Lista Simplesmente Encadeada (Nós e Ponteiros)
+              </option>
+              <option value="2">
+                Lista Duplamente Encadeada (Ponteiros Ant/Próx)
+              </option>
+              <option value="3">
+                Lista Circular Encadeada (Anel de Ponteiros)
+              </option>
+            </select>
+            <p class="algorithm-note" id="structureNote">
+              Bloco contíguo no heap alocado com malloc/realloc; acesso O(1) por
+              índice.
+            </p>
+          </div>
+
           <div class="control-section">
             <label class="section-label" for="sequenceCount"
               >QUANTIDADE DE NÚMEROS</label
@@ -62,6 +78,7 @@
               Informe de 2 a 128 números para gerar uma sequência.
             </p>
           </div>
+
           <div class="control-section">
             <label class="section-label" for="sequenceInput"
               >SUA SEQUÊNCIA</label
@@ -95,35 +112,40 @@
                 Gerar n → 1
               </button>
             </div>
-            <button class="apply-button" id="applySequence">
+            <button class="apply-button" id="applySequence" type="button">
               Aplicar sequência
             </button>
           </div>
-          <button class="primary" id="sortButton">
+
+          <button class="primary" id="sortButton" type="button">
             <span>▶</span> Ordenar
           </button>
-          <div class="player" aria-label="Controles de animação">
+
+          <div class="player" aria-label="Controles de animação e Pilha">
             <button
               id="playButton"
               class="icon-button"
-              title="Reproduzir"
+              title="Reproduzir / Pausar"
               aria-label="Reproduzir"
+              type="button"
             >
               ▶
             </button>
             <button
               id="stepBack"
               class="icon-button"
-              title="Voltar um passo"
+              title="Voltar um passo (Desfazer via Pilha)"
               aria-label="Voltar um passo"
+              type="button"
             >
               ‹
             </button>
             <button
               id="stepForward"
               class="icon-button"
-              title="Avançar um passo"
+              title="Avançar um passo (Refazer / Empilhar)"
               aria-label="Avançar um passo"
+              type="button"
             >
               ›
             </button>
@@ -132,6 +154,7 @@
               class="icon-button"
               title="Reiniciar"
               aria-label="Reiniciar"
+              type="button"
             >
               ↺
             </button>
@@ -139,6 +162,26 @@
             ><input id="speed" type="range" min="1" max="100" value="55" />
             <span class="speed-label">VELOCIDADE</span>
           </div>
+
+          <div class="stack-status" aria-label="Estado da Pilha Undo/Redo">
+            <div class="stack-row">
+              <span class="section-label"
+                >TAD PILHA JS (DESFAZER / REFAZER)</span
+              >
+            </div>
+            <div class="stack-badges">
+              <span class="stack-badge"
+                >Desfazer: <strong id="undoStackSize">0</strong></span
+              >
+              <span class="stack-badge"
+                >Refazer: <strong id="redoStackSize">0</strong></span
+              >
+            </div>
+            <p class="stack-top-note" id="stackTopLabel">
+              Topo da pilha: vazia
+            </p>
+          </div>
+
           <div class="legend">
             <span><i class="key key-active"></i>Em foco</span
             ><span><i class="key key-done"></i>Ordenado</span>
@@ -153,14 +196,14 @@
                 >Pronto para começar</span
               >
             </div>
-            <button id="shuffleButton" class="text-button">
+            <button id="shuffleButton" class="text-button" type="button">
               ↻&nbsp; Reaplicar sequência
             </button>
           </div>
           <div class="chart-wrap">
             <canvas
               id="chart"
-              aria-label="Barras que representam os valores do vetor"
+              aria-label="Barras que representam os valores da estrutura de dados"
             ></canvas>
             <div id="emptyState" class="empty-state" hidden>
               Pressione <b>Ordenar</b> para assistir.
@@ -176,13 +219,20 @@
               <span class="metric-label">TROCAS / MOVIMENTOS</span
               ><strong id="swaps">0</strong
               ><span class="metric-hint"
-                >deslocamentos e escritas incluídos</span
+                >ponteiros, deslocamentos e escritas</span
               >
             </div>
             <div class="metric">
               <span class="metric-label">TEMPO DE EXECUÇÃO</span
-              ><strong><span id="time">0.00</span><small>ms</small></strong
-              ><span class="metric-hint">no motor de ordenação</span>
+              ><strong><span id="time">0.000</span><small>ms</small></strong
+              ><span class="metric-hint">no motor em C</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">USO DE MEMÓRIA</span
+              ><strong><span id="memory">0</span><small>B</small></strong
+              ><span class="metric-hint" id="memoryHint"
+                >alocação dinâmica no heap</span
+              >
             </div>
             <div class="metric">
               <span class="metric-label">PROGRESSO</span
@@ -199,8 +249,196 @@
           </div>
         </div>
       </section>
-      <footer><span>IFSP Araraquara</span><span>ARQESDD</span></footer>
+
+      <section
+        class="lab-grid"
+        aria-label="Processamento em Lote e Histórico na Tabela Hash"
+      >
+        <div class="lab-card">
+          <div class="lab-card-header">
+            <div>
+              <span class="section-label"
+                >EXECUÇÃO EM LOTE — BATCH (TAD FILA EM C)</span
+              >
+              <h2 class="lab-title">
+                Comparar Estruturas e Algoritmos em Lote
+              </h2>
+            </div>
+            <span class="badge-pill" id="batchStatusBadge"
+              >Fila aguardando</span
+            >
+          </div>
+          <p class="lab-desc">
+            Enfileira múltiplos cenários de teste no TAD dinâmico
+            <code>Queue</code> em C (nós encadeados com
+            <code>malloc</code>/<code>free</code>), processa cada tarefa em
+            ordem FIFO e registra todos os resultados na
+            <code>HashTable</code> em memória.
+          </p>
+          <div class="batch-actions">
+            <button
+              class="apply-button"
+              id="batchCompareStructures"
+              type="button"
+            >
+              Enfileirar 4 Estruturas (Algoritmo Atual)
+            </button>
+            <button
+              class="apply-button"
+              id="batchCompareAlgorithms"
+              type="button"
+            >
+              Enfileirar 5 Algoritmos (Estrutura Atual)
+            </button>
+            <button class="apply-button" id="batchFullMatrix" type="button">
+              Matriz Completa (5 Algoritmos × 4 Estruturas)
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table
+              class="data-table"
+              aria-label="Resultados da execução em lote"
+            >
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Algoritmo</th>
+                  <th>Estrutura</th>
+                  <th>Comparações</th>
+                  <th>Trocas/Mov.</th>
+                  <th>Tempo (ms)</th>
+                  <th>Memória</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="batchTableBody">
+                <tr>
+                  <td colspan="8" class="empty-row">
+                    Selecione uma opção acima para enfileirar e comparar os
+                    cenários.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="lab-card">
+          <div class="lab-card-header">
+            <div>
+              <span class="section-label"
+                >HISTÓRICO EM MEMÓRIA (TAD TABELA HASH EM C — ENCADEAMENTO
+                EXTERIOR)</span
+              >
+              <h2 class="lab-title">Consultar Testes Anteriores por Algoritmo</h2>
+            </div>
+            <span class="badge-pill" id="hashStatsBadge"
+              >0 testes · 11 buckets</span
+            >
+          </div>
+          <p class="lab-desc">
+            Cada execução é indexada por <code>algorithmName</code> em uma
+            <code>HashTable</code> dinâmica em C com Encadeamento Exterior
+            (vetor de buckets via <code>malloc</code>/<code>realloc</code> +
+            listas encadeadas de colisão).
+          </p>
+          <div class="history-controls">
+            <select
+              id="historyFilter"
+              aria-label="Filtrar histórico pelo nome do algoritmo"
+            >
+              <option value="all">Todos os Algoritmos (Todos os Buckets)</option>
+              <option value="Bubble Sort">Bucket: Bubble Sort</option>
+              <option value="Selection Sort">Bucket: Selection Sort</option>
+              <option value="Insertion Sort">Bucket: Insertion Sort</option>
+              <option value="Quick Sort">Bucket: Quick Sort</option>
+              <option value="Merge Sort">Bucket: Merge Sort</option>
+            </select>
+            <button
+              class="apply-button danger-outline-button"
+              id="clearHistoryButton"
+              type="button"
+            >
+              Limpar Histórico
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table
+              class="data-table"
+              aria-label="Relatórios armazenados na Tabela Hash"
+            >
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Algoritmo</th>
+                  <th>Estrutura</th>
+                  <th>N</th>
+                  <th>Comp.</th>
+                  <th>Trocas</th>
+                  <th>Tempo (ms)</th>
+                  <th>Memória</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr>
+                  <td colspan="9" class="empty-row">
+                    Nenhum teste registrado ainda. Execute uma ordenação ou
+                    lote.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <span>IFSP Araraquara — Estrutura de Dados (ARQESDD)</span
+        ><span
+          >Alocação Dinâmica · Listas Encadeadas · Pilha · Fila · Tabela
+          Hash</span
+        >
+      </footer>
     </main>
+
+    <div
+      id="clearHistoryModal"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="clearHistoryModalTitle"
+      hidden
+    >
+      <div class="modal-dialog">
+        <span class="section-label">CONFIRMAÇÃO</span>
+        <h3 id="clearHistoryModalTitle" class="modal-title">
+          Limpar todo o histórico da Tabela Hash?
+        </h3>
+        <p class="modal-desc">
+          Esta ação liberará da memória (<code>free</code>) todos os relatórios
+          de testes e nós encadeados armazenados na
+          <code>HashTable</code> em C. Essa operação não pode ser desfeita.
+        </p>
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="apply-button"
+            id="cancelClearHistory"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="apply-button danger-solid-button"
+            id="confirmClearHistory"
+          >
+            Sim, limpar histórico
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="web/app.js"></script>
   </body>
 </html>

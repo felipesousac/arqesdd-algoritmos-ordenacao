@@ -1,6 +1,54 @@
 (() => {
   'use strict';
 
+  // Dynamic Linked Stack TAD (Undo / Redo Step-by-Step History) -----------
+
+  class StackNode {
+    constructor(data, next = null) {
+      this.data = data;
+      this.next = next;
+    }
+  }
+
+  class OperationStack {
+    constructor() {
+      this.top = null;
+      this.count = 0;
+    }
+
+    push(element) {
+      this.top = new StackNode(element, this.top);
+      this.count++;
+    }
+
+    pop() {
+      if (this.top === null) {
+        return null;
+      }
+      const removed = this.top;
+      this.top = removed.next;
+      this.count--;
+      return removed.data;
+    }
+
+    peek() {
+      return this.top !== null ? this.top.data : null;
+    }
+
+    isEmpty() {
+      return this.top === null;
+    }
+
+    size() {
+      return this.count;
+    }
+
+    clear() {
+      this.top = null;
+      this.count = 0;
+    }
+  }
+
   // DOM helpers and display labels ---------------------------------------
 
   const element = (id) => document.getElementById(id);
@@ -23,35 +71,63 @@
     'Divide a lista ao meio e combina as partes já ordenadas.'
   ];
 
+  const structureNames = [
+    'Lista Sequencial (Vetor Dinâmico)',
+    'Lista Simplesmente Encadeada',
+    'Lista Duplamente Encadeada',
+    'Lista Circular Encadeada'
+  ];
+
+  const structureDescriptions = [
+    'Bloco contíguo no heap alocado com malloc/realloc; acesso O(1) por índice.',
+    'Cadeia dinâmica de nós (dado + ponteiro next); ordenação religando ponteiros.',
+    'Cadeia dinâmica de nós (dado + ponteiros prev/next); percurso bidirecional.',
+    'Anel dinâmico de nós onde tail->next aponta de volta para head.'
+  ];
+
   const colors = {
     bar: '#40d7ce',
     sortedBar: '#c7e66b',
     highlightedBar: '#ff9c61'
   };
 
-  // These numeric values are shared with enum OperationType in the C engine.
+  // Shared with enum OperationType in the C engine
   const OperationType = {
     COMPARE: 0,
     SWAP: 1,
     WRITE: 2
   };
 
-  // Current engine and animation state -----------------------------------
+  // Current engine, animation, and Stack TAD state -----------------------
 
   let initialValues = [];
-  let animationFrames = [];
-  let currentFrameIndex = 0;
+  let rawOperations = [];
+  let currentHistory = null;
+  let totalSteps = 0;
+  let currentStepIndex = 0;
   let playbackTimer = null;
   let displayedValues = [];
   let highlightedIndices = [];
   let sortedFromIndex = Infinity;
+  let currentComparisons = 0;
+  let currentSwaps = 0;
+  let currentTimeMs = 0;
+  let currentMemoryBytes = 0;
 
-  // API status ------------------------------------------------------------
+  const undoStack = new OperationStack();
+  const redoStack = new OperationStack();
+
+  function translateStructureName(structureId, fallbackName) {
+    return structureNames[Number(structureId)] || fallbackName || '';
+  }
+
+  // API initialization ----------------------------------------------------
 
   function loadSortingEngine() {
     setEngineStatus('API C pronta', true);
     element('sortButton').disabled = false;
     applySequence();
+    refreshHashHistory();
   }
 
   function setEngineStatus(message, isReady) {
@@ -123,150 +199,224 @@
     resetVisualization();
   }
 
-  // Consume the sorting history returned by the C API --------------------
+  // Reversible Stack-based Step Execution (Undo / Redo) ------------------
 
-  function createFrame(operation, values, sortedFrom) {
-    return {
-      operation,
-      values: values.slice(),
-      sortedFrom
-    };
+  function loadHistoryIntoPlayer(history) {
+    currentHistory = history;
+    initialValues = (history.input || []).slice();
+    rawOperations = (history.operations || []).slice();
+    totalSteps = rawOperations.length + 1;
+    currentMemoryBytes =
+      history.metrics && history.metrics.memoryBytes
+        ? history.metrics.memoryBytes
+        : 0;
+
+    undoStack.clear();
+    redoStack.clear();
+
+    displayedValues = initialValues.slice();
+    highlightedIndices = [];
+    sortedFromIndex = Infinity;
+    currentStepIndex = 0;
+    currentComparisons = 0;
+    currentSwaps = 0;
+    currentTimeMs = 0;
+
+    element('timeline').max = Math.max(0, totalSteps);
+    element('timeline').value = 0;
+    element('timelineEnd').textContent = `${totalSteps} PASSOS`;
+    element('emptyState').hidden = true;
+
+    updateStackUI();
+    renderState();
   }
 
-  function createAnimationFromHistory(history) {
-    const frames = [createFrame(null, history.input, Infinity)];
-    const valuesAtFrame = history.input.slice();
-    let comparisonCount = 0;
-    let swapAndMovementCount = 0;
-    const operations = history.operations || [];
+  // Advances one step forward using RedoStack or next raw operation, pushing a reversible record onto UndoStack
+  function stepForwardOne() {
+    if (!currentHistory || currentStepIndex >= totalSteps) {
+      return false;
+    }
 
-    operations.forEach((operation, operationIndex) => {
-      if (operation.type === OperationType.COMPARE) {
-        comparisonCount++;
-      } else if (operation.type === OperationType.SWAP) {
-        swapAndMovementCount++;
-        [
-          valuesAtFrame[operation.firstIndex],
-          valuesAtFrame[operation.secondIndex]
-        ] = [
-          valuesAtFrame[operation.secondIndex],
-          valuesAtFrame[operation.firstIndex]
-        ];
-      } else if (operation.type === OperationType.WRITE) {
-        valuesAtFrame[operation.firstIndex] = operation.firstValue;
-        if (operation.secondValue) {
-          swapAndMovementCount++;
+    const redoRecord = !redoStack.isEmpty() ? redoStack.pop() : null;
+    const stepIdx = currentStepIndex + 1;
+
+    if (stepIdx <= rawOperations.length) {
+      const op = redoRecord ? redoRecord.operation : rawOperations[stepIdx - 1];
+      const reversibleRecord = {
+        stepIndex: stepIdx,
+        isFinalStep: false,
+        operation: op,
+        prevFirstValue:
+          op.firstIndex >= 0 ? displayedValues[op.firstIndex] : null,
+        prevSecondValue:
+          op.secondIndex >= 0 ? displayedValues[op.secondIndex] : null,
+        prevComparisons: currentComparisons,
+        prevSwaps: currentSwaps,
+        prevTimeMs: currentTimeMs,
+        prevHighlighted: highlightedIndices.slice(),
+        prevSortedFrom: sortedFromIndex
+      };
+
+      if (op.type === OperationType.COMPARE) {
+        currentComparisons++;
+      } else if (op.type === OperationType.SWAP) {
+        currentSwaps++;
+        const temp = displayedValues[op.firstIndex];
+        displayedValues[op.firstIndex] = displayedValues[op.secondIndex];
+        displayedValues[op.secondIndex] = temp;
+      } else if (op.type === OperationType.WRITE) {
+        displayedValues[op.firstIndex] = op.firstValue;
+        if (op.secondValue) {
+          currentSwaps++;
         }
       }
 
-      const frame = createFrame(
-        {
-          type: operation.type,
-          i: operation.firstIndex,
-          j: operation.secondIndex
-        },
-        valuesAtFrame,
-        Infinity
+      currentTimeMs =
+        (currentHistory.metrics.elapsedMs * stepIdx) /
+        Math.max(1, rawOperations.length);
+      highlightedIndices = [op.firstIndex, op.secondIndex].filter(
+        (idx) => idx >= 0
       );
-      frame.comparisons = comparisonCount;
-      frame.swaps = swapAndMovementCount;
-      frame.time =
-        (history.metrics.elapsedMs * (operationIndex + 1)) /
-        Math.max(1, operations.length);
-      frames.push(frame);
-    });
+      sortedFromIndex = Infinity;
 
-    const finalFrame = createFrame(null, history.sorted, 0);
-    finalFrame.comparisons = history.metrics.comparisons;
-    finalFrame.swaps = history.metrics.swaps;
-    finalFrame.time = history.metrics.elapsedMs;
-    const lastFrame = frames[frames.length - 1];
-    if (frames.length === 1 || !sameValues(lastFrame.values, history.sorted)) {
-      frames.push(finalFrame);
+      undoStack.push(reversibleRecord);
+      currentStepIndex = stepIdx;
     } else {
-      frames[frames.length - 1] = finalFrame;
+      // Final completion step
+      const reversibleRecord = {
+        stepIndex: stepIdx,
+        isFinalStep: true,
+        operation: null,
+        prevValuesSnapshot: displayedValues.slice(),
+        prevComparisons: currentComparisons,
+        prevSwaps: currentSwaps,
+        prevTimeMs: currentTimeMs,
+        prevHighlighted: highlightedIndices.slice(),
+        prevSortedFrom: sortedFromIndex
+      };
+
+      displayedValues = (currentHistory.sorted || displayedValues).slice();
+      currentComparisons = currentHistory.metrics.comparisons;
+      currentSwaps = currentHistory.metrics.swaps;
+      currentTimeMs = currentHistory.metrics.elapsedMs;
+      highlightedIndices = [];
+      sortedFromIndex = 0;
+
+      undoStack.push(reversibleRecord);
+      currentStepIndex = stepIdx;
     }
-    return frames;
+
+    return true;
   }
 
-  function sameValues(first, second) {
-    return first.join(',') === second.join(',');
-  }
-
-  async function startSorting() {
-    const values = readSequenceFromInput();
-    if (!values) {
-      return;
+  // Steps backward by popping from UndoStack, surgically reverting displayedValues, and pushing onto RedoStack
+  function stepBackwardOne() {
+    if (undoStack.isEmpty() || currentStepIndex <= 0) {
+      return false;
     }
 
-    initialValues = values;
-    stopPlayback();
-    element('sortButton').disabled = true;
-    try {
-      const query = new URLSearchParams({
-        algorithm: element('algorithm').value,
-        values: values.join(',')
-      });
-      const response = await fetch(`/api/sort?${query}`);
-      const history = await response.json();
-      if (!response.ok) {
-        throw new Error(history.error || 'Falha na API de ordenação.');
+    const record = undoStack.pop();
+    redoStack.push(record);
+
+    if (record.isFinalStep) {
+      displayedValues = record.prevValuesSnapshot.slice();
+    } else {
+      const op = record.operation;
+      if (op.type === OperationType.SWAP) {
+        displayedValues[op.firstIndex] = record.prevFirstValue;
+        displayedValues[op.secondIndex] = record.prevSecondValue;
+      } else if (op.type === OperationType.WRITE) {
+        displayedValues[op.firstIndex] = record.prevFirstValue;
       }
-
-      animationFrames = createAnimationFromHistory(history);
-    } catch (error) {
-      animationFrames = [];
-      element('sequenceError').textContent =
-        `Não foi possível obter o histórico da API C. ${error.message}`;
-      element('sequenceError').hidden = false;
-      return;
-    } finally {
-      element('sortButton').disabled = false;
     }
-    currentFrameIndex = 0;
-    element('timeline').max = Math.max(0, animationFrames.length - 1);
-    element('timelineEnd').textContent = `${animationFrames.length - 1} PASSOS`;
-    element('emptyState').hidden = true;
-    element('stepLabel').textContent =
-      `${algorithmNames[Number(element('algorithm').value)]} · ${
-        animationFrames.length - 1
-      } passos`;
-    showFrame(0);
-    playPlayback();
+
+    currentComparisons = record.prevComparisons;
+    currentSwaps = record.prevSwaps;
+    currentTimeMs = record.prevTimeMs;
+    highlightedIndices = record.prevHighlighted.slice();
+    sortedFromIndex = record.prevSortedFrom;
+    currentStepIndex = record.stepIndex - 1;
+
+    return true;
   }
 
-  // Frame display and canvas rendering -----------------------------------
-
-  function showFrame(frameIndex) {
-    if (!animationFrames.length) {
+  function seekToStep(targetStep) {
+    if (!currentHistory) {
       return;
     }
+    const clampedTarget = Math.max(0, Math.min(totalSteps, targetStep));
+    while (currentStepIndex < clampedTarget) {
+      if (!stepForwardOne()) {
+        break;
+      }
+    }
+    while (currentStepIndex > clampedTarget) {
+      if (!stepBackwardOne()) {
+        break;
+      }
+    }
+    updateStackUI();
+    renderState();
+  }
 
-    currentFrameIndex = Math.max(
-      0,
-      Math.min(animationFrames.length - 1, frameIndex)
+  function updateStackUI() {
+    element('undoStackSize').textContent = String(undoStack.size());
+    element('redoStackSize').textContent = String(redoStack.size());
+
+    const topRecord = undoStack.peek();
+    if (!topRecord) {
+      element('stackTopLabel').textContent =
+        'Topo da pilha: vazia (estado inicial)';
+    } else if (topRecord.isFinalStep) {
+      element('stackTopLabel').textContent =
+        `Topo da pilha: #${topRecord.stepIndex} CONCLUÍDO`;
+    } else {
+      const op = topRecord.operation;
+      const opLabel = operationName(op.type).toUpperCase();
+      element('stackTopLabel').textContent =
+        op.secondIndex >= 0 && op.type !== OperationType.WRITE
+          ? `Topo da pilha: #${topRecord.stepIndex} ${opLabel}(${op.firstIndex}, ${op.secondIndex})`
+          : `Topo da pilha: #${topRecord.stepIndex} ${opLabel}[${op.firstIndex}] = ${op.firstValue}`;
+    }
+  }
+
+  // Rendering state, metrics, and chart ----------------------------------
+
+  function renderState() {
+    renderMetrics(
+      currentComparisons,
+      currentSwaps,
+      currentTimeMs,
+      currentMemoryBytes
     );
-
-    const frame = animationFrames[currentFrameIndex];
-    displayedValues = frame.values;
-    highlightedIndices = frame.operation
-      ? [frame.operation.i, frame.operation.j].filter((index) => index >= 0)
-      : [];
-    sortedFromIndex = frame.sortedFrom;
-
-    renderMetrics(frame.comparisons || 0, frame.swaps || 0, frame.time || 0);
-    element('timeline').value = currentFrameIndex;
+    element('timeline').value = currentStepIndex;
 
     const progress =
-      currentFrameIndex / Math.max(1, animationFrames.length - 1);
+      totalSteps > 0 ? currentStepIndex / Math.max(1, totalSteps) : 0;
     const progressPercent = Math.round(progress * 100);
     element('progress').innerHTML =
       `${progressPercent}<span class="percent">%</span>`;
     element('progressBar').style.width = `${progress * 100}%`;
 
-    element('stepLabel').textContent = frame.operation
-      ? `${operationName(frame.operation.type)} · passo ${currentFrameIndex} de ${animationFrames.length - 1}`
-      : 'Vetor final';
+    const topRecord = undoStack.peek();
+    if (!currentHistory) {
+      element('stepLabel').textContent = 'Vetor pronto';
+    } else {
+      const structLabel = translateStructureName(
+        currentHistory.structure,
+        currentHistory.structureName
+      );
+      if (!topRecord) {
+        element('stepLabel').textContent =
+          `${currentHistory.algorithmName} em ${structLabel} · passo 0 de ${totalSteps}`;
+      } else if (topRecord.isFinalStep) {
+        element('stepLabel').textContent =
+          `Estrutura ordenada (${structLabel}) · ${totalSteps} passos`;
+      } else {
+        element('stepLabel').textContent =
+          `${operationName(topRecord.operation.type)} · passo ${currentStepIndex} de ${totalSteps} (Pilha: ${undoStack.size()})`;
+      }
+    }
 
     drawChart();
   }
@@ -281,10 +431,21 @@
     return 'Escrita';
   }
 
-  function renderMetrics(comparisons, swaps, elapsedMs = 0) {
-    element('comparisons').textContent = Number(comparisons).toLocaleString('pt-BR');
+  function formatMemoryBytes(bytes) {
+    const num = Number(bytes) || 0;
+    if (num >= 1024) {
+      return `${(num / 1024).toFixed(2)} KB (${num} B)`;
+    }
+    return `${num} B`;
+  }
+
+  function renderMetrics(comparisons, swaps, elapsedMs = 0, memoryBytes = 0) {
+    element('comparisons').textContent =
+      Number(comparisons).toLocaleString('pt-BR');
     element('swaps').textContent = Number(swaps).toLocaleString('pt-BR');
-    element('time').textContent = Number(elapsedMs).toFixed(2);
+    element('time').textContent = Number(elapsedMs).toFixed(3);
+    element('memory').textContent =
+      Number(memoryBytes).toLocaleString('pt-BR');
   }
 
   function drawChart() {
@@ -337,19 +498,212 @@
   function resetVisualization() {
     stopPlayback();
 
+    currentHistory = null;
+    rawOperations = [];
+    totalSteps = 0;
+    currentStepIndex = 0;
     displayedValues = initialValues.slice();
-    animationFrames = [];
-    currentFrameIndex = 0;
     highlightedIndices = [];
     sortedFromIndex = Infinity;
+    currentComparisons = 0;
+    currentSwaps = 0;
+    currentTimeMs = 0;
+    currentMemoryBytes = 0;
 
-    renderMetrics(0, 0);
+    undoStack.clear();
+    redoStack.clear();
+
+    updateStackUI();
+    renderMetrics(0, 0, 0, 0);
     drawChart();
 
     element('stepLabel').textContent = 'Vetor pronto';
     element('emptyState').hidden = true;
     element('timeline').max = 0;
     element('timeline').value = 0;
+  }
+
+  // API Calls: Single Sort, Batch Queue, and Hash Table History ----------
+
+  async function startSorting() {
+    const values = readSequenceFromInput();
+    if (!values) {
+      return;
+    }
+
+    initialValues = values;
+    stopPlayback();
+    element('sortButton').disabled = true;
+
+    try {
+      const query = new URLSearchParams({
+        algorithm: element('algorithm').value,
+        structure: element('structure').value,
+        values: values.join(',')
+      });
+      const response = await fetch(`/api/sort?${query}`);
+      const history = await response.json();
+      if (!response.ok) {
+        throw new Error(history.error || 'Falha na API de ordenação.');
+      }
+
+      loadHistoryIntoPlayer(history);
+      playPlayback();
+      refreshHashHistory();
+    } catch (error) {
+      element('sequenceError').textContent =
+        `Não foi possível obter o histórico da API C: ${error.message}`;
+      element('sequenceError').hidden = false;
+    } finally {
+      element('sortButton').disabled = false;
+    }
+  }
+
+  async function runBatchBenchmark(algorithmsParam, structuresParam) {
+    const values = readSequenceFromInput();
+    if (!values) {
+      return;
+    }
+
+    element('batchStatusBadge').textContent = 'Processando Fila em C…';
+    try {
+      const query = new URLSearchParams({
+        algorithms: algorithmsParam,
+        structures: structuresParam,
+        values: values.join(',')
+      });
+      const response = await fetch(`/api/batch?${query}`, { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Falha na execução em lote.');
+      }
+
+      element('batchStatusBadge').textContent =
+        `${data.queueTasksProcessed} tarefas desenfileiradas · Pico da Fila: ${data.queuePeakMemoryBytes} B`;
+      renderBatchTable(data.results || []);
+      refreshHashHistory();
+    } catch (error) {
+      element('batchStatusBadge').textContent = 'Erro no lote';
+      element('sequenceError').textContent =
+        `Falha ao processar lote na Fila C: ${error.message}`;
+      element('sequenceError').hidden = false;
+    }
+  }
+
+  function renderBatchTable(results) {
+    const tbody = element('batchTableBody');
+    tbody.innerHTML = '';
+
+    if (!results.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="8" class="empty-row">Nenhum resultado retornado.</td></tr>';
+      return;
+    }
+
+    results.forEach((item) => {
+      const tr = document.createElement('tr');
+      const structLabel = translateStructureName(
+        item.structure,
+        item.structureName
+      );
+      tr.innerHTML = `
+        <td>#${item.testId}</td>
+        <td>${item.algorithmName}</td>
+        <td>${structLabel}</td>
+        <td>${Number(item.metrics.comparisons).toLocaleString('pt-BR')}</td>
+        <td>${Number(item.metrics.swaps).toLocaleString('pt-BR')}</td>
+        <td>${Number(item.metrics.elapsedMs).toFixed(3)}</td>
+        <td>${formatMemoryBytes(item.metrics.memoryBytes)}</td>
+        <td><button type="button" class="replay-btn" data-test-id="${item.testId}">Reproduzir</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function refreshHashHistory() {
+    const filterValue = element('historyFilter').value;
+    try {
+      const query = new URLSearchParams({ algorithm: filterValue });
+      const response = await fetch(`/api/history?${query}`);
+      const data = await response.json();
+      if (!response.ok) {
+        return;
+      }
+
+      if (data.tableStats) {
+        element('hashStatsBadge').textContent =
+          `${data.tableStats.totalTests} testes · ${data.tableStats.bucketCount} buckets · ${formatMemoryBytes(data.tableStats.memoryBytes)}`;
+      }
+      renderHistoryTable(data.reports || []);
+    } catch (_) {
+      // Keep current table if offline
+    }
+  }
+
+  function renderHistoryTable(reports) {
+    const tbody = element('historyTableBody');
+    tbody.innerHTML = '';
+
+    if (!reports.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="9" class="empty-row">Nenhum teste encontrado neste bucket da Tabela Hash.</td></tr>';
+      return;
+    }
+
+    const sortedReports = reports
+      .slice()
+      .sort((a, b) => Number(b.testId) - Number(a.testId));
+
+    sortedReports.forEach((rep) => {
+      const tr = document.createElement('tr');
+      const structLabel = translateStructureName(
+        rep.structure,
+        rep.structureName
+      );
+      tr.innerHTML = `
+        <td>#${rep.testId}</td>
+        <td>${rep.algorithmName}</td>
+        <td>${structLabel}</td>
+        <td>${rep.metrics.itemCount}</td>
+        <td>${Number(rep.metrics.comparisons).toLocaleString('pt-BR')}</td>
+        <td>${Number(rep.metrics.swaps).toLocaleString('pt-BR')}</td>
+        <td>${Number(rep.metrics.elapsedMs).toFixed(3)}</td>
+        <td>${formatMemoryBytes(rep.metrics.memoryBytes)}</td>
+        <td><button type="button" class="replay-btn" data-test-id="${rep.testId}">Reproduzir</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function replayTestById(testId) {
+    stopPlayback();
+    try {
+      const response = await fetch(
+        `/api/history/detail?id=${encodeURIComponent(testId)}`
+      );
+      const history = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          history.error || 'Não foi possível carregar o teste.'
+        );
+      }
+
+      element('algorithm').value = String(history.algorithm);
+      element('algorithmNote').textContent =
+        algorithmDescriptions[Number(history.algorithm)] || '';
+      element('structure').value = String(history.structure);
+      element('structureNote').textContent =
+        structureDescriptions[Number(history.structure)] || '';
+      element('sequenceInput').value = (history.input || []).join(', ');
+
+      loadHistoryIntoPlayer(history);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      playPlayback();
+    } catch (error) {
+      element('sequenceError').textContent =
+        `Falha ao reproduzir teste #${testId}: ${error.message}`;
+      element('sequenceError').hidden = false;
+    }
   }
 
   // Playback controls -----------------------------------------------------
@@ -365,10 +719,7 @@
   }
 
   function playPlayback() {
-    if (
-      !animationFrames.length ||
-      currentFrameIndex >= animationFrames.length - 1
-    ) {
+    if (!currentHistory || currentStepIndex >= totalSteps) {
       stopPlayback();
       return;
     }
@@ -381,27 +732,21 @@
     const intervalMs = Math.max(12, 180 - speed * 1.55);
 
     playbackTimer = setInterval(() => {
-      if (currentFrameIndex >= animationFrames.length - 1) {
+      if (!stepForwardOne()) {
         stopPlayback();
         return;
       }
-
-      showFrame(currentFrameIndex + 1);
+      updateStackUI();
+      renderState();
+      if (currentStepIndex >= totalSteps) {
+        stopPlayback();
+      }
     }, intervalMs);
   }
 
   // User interface event handlers ----------------------------------------
 
-  element('sortButton').addEventListener('click', () => {
-    const values = readSequenceFromInput();
-    if (!values) {
-      return;
-    }
-
-    initialValues = values;
-    startSorting();
-  });
-
+  element('sortButton').addEventListener('click', startSorting);
   element('applySequence').addEventListener('click', applySequence);
   element('ascendingSequence').addEventListener('click', () =>
     applyOrderedSequence(1)
@@ -419,7 +764,7 @@
 
   element('resetButton').addEventListener('click', () => {
     stopPlayback();
-    showFrame(0);
+    seekToStep(0);
   });
 
   element('playButton').addEventListener('click', () => {
@@ -432,23 +777,104 @@
 
   element('stepBack').addEventListener('click', () => {
     stopPlayback();
-    showFrame(currentFrameIndex - 1);
+    if (stepBackwardOne()) {
+      updateStackUI();
+      renderState();
+    }
   });
 
   element('stepForward').addEventListener('click', () => {
     stopPlayback();
-    showFrame(currentFrameIndex + 1);
+    if (stepForwardOne()) {
+      updateStackUI();
+      renderState();
+    }
   });
 
   element('timeline').addEventListener('input', (event) => {
     stopPlayback();
-    showFrame(Number(event.target.value));
+    seekToStep(Number(event.target.value));
   });
 
   element('algorithm').addEventListener('change', (event) => {
     element('algorithmNote').textContent =
       algorithmDescriptions[Number(event.target.value)];
     resetVisualization();
+  });
+
+  element('structure').addEventListener('change', (event) => {
+    element('structureNote').textContent =
+      structureDescriptions[Number(event.target.value)];
+    resetVisualization();
+  });
+
+  element('batchCompareStructures').addEventListener('click', () => {
+    runBatchBenchmark(element('algorithm').value, '0,1,2,3');
+  });
+
+  element('batchCompareAlgorithms').addEventListener('click', () => {
+    runBatchBenchmark('0,1,2,3,4', element('structure').value);
+  });
+
+  element('batchFullMatrix').addEventListener('click', () => {
+    runBatchBenchmark('0,1,2,3,4', '0,1,2,3');
+  });
+
+  function openClearHistoryModal() {
+    element('clearHistoryModal').hidden = false;
+  }
+
+  function closeClearHistoryModal() {
+    element('clearHistoryModal').hidden = true;
+  }
+
+  function resetBatchCard() {
+    element('batchStatusBadge').textContent = 'Fila aguardando';
+    element('batchTableBody').innerHTML =
+      '<tr><td colspan="8" class="empty-row">Selecione uma opção acima para enfileirar e comparar os cenários.</td></tr>';
+  }
+
+  async function confirmClearHashHistory() {
+    try {
+      const response = await fetch('/api/history/clear', { method: 'POST' });
+      if (!response.ok) {
+        throw new Error('Não foi possível limpar o histórico na API C.');
+      }
+      closeClearHistoryModal();
+      resetBatchCard();
+      refreshHashHistory();
+    } catch (error) {
+      closeClearHistoryModal();
+      element('sequenceError').textContent = error.message;
+      element('sequenceError').hidden = false;
+    }
+  }
+
+  element('historyFilter').addEventListener('change', refreshHashHistory);
+  element('clearHistoryButton').addEventListener('click', openClearHistoryModal);
+  element('cancelClearHistory').addEventListener('click', closeClearHistoryModal);
+  element('confirmClearHistory').addEventListener(
+    'click',
+    confirmClearHashHistory
+  );
+
+  element('clearHistoryModal').addEventListener('click', (event) => {
+    if (event.target === element('clearHistoryModal')) {
+      closeClearHistoryModal();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !element('clearHistoryModal').hidden) {
+      closeClearHistoryModal();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const replayButton = event.target.closest('.replay-btn');
+    if (replayButton && replayButton.dataset.testId) {
+      replayTestById(replayButton.dataset.testId);
+    }
   });
 
   window.addEventListener('resize', drawChart);
