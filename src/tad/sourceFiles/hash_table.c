@@ -28,17 +28,19 @@ static char *duplicate_string(const char *str) {
   return copy;
 }
 
-/* Polynomial / DJB2 string hash function modulo M */
+/* DJB2 Hash Function by Daniel J. Bernstein */
 static size_t hash_function(const char *key, size_t bucket_count) {
   if (key == NULL || bucket_count == 0) {
     return 0;
   }
 
   unsigned long hash = 5381;
+
   while (*key) {
-    unsigned char ch = (unsigned char)tolower((unsigned char)*key++);
+    unsigned char ch = (unsigned char) tolower((unsigned char) *key++);
     hash = ((hash << 5) + hash) + ch;
   }
+
   return (size_t)(hash % bucket_count);
 }
 
@@ -46,13 +48,16 @@ static int strings_equal_ignore_case(const char *a, const char *b) {
   if (a == NULL || b == NULL) {
     return 0;
   }
+
   while (*a && *b) {
     if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) {
       return 0;
     }
+
     a++;
     b++;
   }
+
   return *a == '\0' && *b == '\0';
 }
 
@@ -246,36 +251,41 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name, const T
   return node->report.test_id;
 }
 
-SequentialList *hash_table_search_by_algorithm(const HashTable *table,
-                                               const char *algorithm_name) {
+SequentialList *hash_table_search_by_algorithm(const HashTable *table, const char *algorithm_name) {
   if (table == NULL) {
     return NULL;
   }
 
   SequentialList *results = seq_list_create(sizeof(const TestReport *));
+
   if (results == NULL) {
     return NULL;
   }
 
   if (algorithm_name != NULL && algorithm_name[0] != '\0') {
     /* Lookup directly in the hashed bucket chain */
+    // Filter by algorithm name
     size_t bucket_index = hash_function(algorithm_name, table->bucket_count);
+
     const HashNode *curr = table->buckets[bucket_index];
+
     while (curr != NULL) {
-      if (strings_equal_ignore_case(curr->report.algorithm_name,
-                                    algorithm_name)) {
-        const TestReport *ptr = &curr->report;
-        seq_list_insert_end(results, &ptr);
+      if (strings_equal_ignore_case(curr->report.algorithm_name, algorithm_name)) {
+        const TestReport *temp = &curr->report;
+
+        seq_list_insert_end(results, &temp);
       }
+
       curr = curr->next;
     }
   } else {
     /* Return all stored reports across all buckets */
     for (size_t i = 0; i < table->bucket_count; i++) {
       const HashNode *curr = table->buckets[i];
+
       while (curr != NULL) {
-        const TestReport *ptr = &curr->report;
-        seq_list_insert_end(results, &ptr);
+        const TestReport *temp = &curr->report;
+        seq_list_insert_end(results, &temp);
         curr = curr->next;
       }
     }
@@ -306,6 +316,7 @@ size_t hash_table_count(const HashTable *table) {
   if (table == NULL) {
     return 0;
   }
+
   return table->item_count;
 }
 
@@ -313,6 +324,7 @@ size_t hash_table_bucket_count(const HashTable *table) {
   if (table == NULL) {
     return 0;
   }
+
   return table->bucket_count;
 }
 
@@ -320,6 +332,7 @@ size_t hash_table_memory_usage(const HashTable *table) {
   if (table == NULL) {
     return 0;
   }
+  
   return table->memory_bytes;
 }
 

@@ -131,9 +131,8 @@ int seq_list_get(const SequentialList *list, int index, void *out_element) {
     return 0;
   }
 
-  memcpy(out_element,
-         (const char *)list->elements + (size_t)index * list->element_size,
-         list->element_size);
+  memcpy(out_element, (const char *)list->elements + (size_t)index * list->element_size, list->element_size);
+
   return 1;
 }
 

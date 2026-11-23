@@ -144,26 +144,29 @@ static void handle_api_batch(struct mg_connection *c,
   free(body);
 }
 
-static void handle_api_history(struct mg_connection *c,
-                               struct mg_http_message *request) {
+static void handle_api_history(struct mg_connection *c, struct mg_http_message *request) {
   if (!http_is_method(request, "GET")) {
     http_reply_error(c, 405, "Method Not Allowed: use GET");
     return;
   }
 
   char algorithm_filter[64] = {0};
-  mg_http_get_var(&request->query, "algorithm", algorithm_filter,
-                  sizeof(algorithm_filter));
+
+  mg_http_get_var(&request->query, "algorithm", algorithm_filter, sizeof(algorithm_filter));
 
   const char *lookup_key = resolve_algorithm_filter(algorithm_filter);
+
   SequentialList *reports = history_store_search(lookup_key);
+
   if (!reports) {
     http_reply_error(c, 500, "Failed to query Hash Table");
     return;
   }
 
   HistoryStats stats = history_store_stats();
+
   char *body = json_serialize_history(&stats, reports);
+
   seq_list_destroy(reports);
 
   if (!body) {
@@ -212,8 +215,7 @@ static void handle_api_history_detail(struct mg_connection *c,
   free(body);
 }
 
-static void handle_api_history_clear(struct mg_connection *c,
-                                     struct mg_http_message *request) {
+static void handle_api_history_clear(struct mg_connection *c, struct mg_http_message *request) {
   if (!http_is_method(request, "POST") && !http_is_method(request, "DELETE")) {
     http_reply_error(c, 405, "Method Not Allowed: use POST or DELETE");
     return;

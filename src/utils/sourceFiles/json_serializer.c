@@ -72,21 +72,24 @@ char *json_serialize_sort_result(uint64_t test_id, const int32_t *input,
   return json_builder_detach(&json);
 }
 
-char *json_serialize_history(const HistoryStats *stats,
-                             const SequentialList *reports) {
+char *json_serialize_history(const HistoryStats *stats, const SequentialList *reports) {
   JsonBuilder json;
+
   json_builder_init(&json);
 
   json_builder_append(&json,
                       "{\"tableStats\":{\"totalTests\":%zu,\"bucketCount\":%zu,"
                       "\"memoryBytes\":%zu},\"reports\":[",
-                      stats->total_tests, stats->bucket_count,
+                      stats->total_tests, 
+                      stats->bucket_count,
                       stats->memory_bytes);
 
   for (int i = 0; i < seq_list_size(reports); i++) {
-    const TestReport *rep = NULL;
-    seq_list_get(reports, i, &rep);
-    if (!rep) {
+    const TestReport *current_report = NULL;
+
+    seq_list_get(reports, i, &current_report);
+
+    if (!current_report) {
       continue;
     }
 
@@ -96,17 +99,22 @@ char *json_serialize_history(const HistoryStats *stats,
                         "\"metrics\":{\"itemCount\":%d,\"comparisons\":%lld,"
                         "\"swaps\":%lld,\"elapsedMs\":%.6f,\"memoryBytes\":%zu,"
                         "\"operationCount\":%d}}",
-                        i ? "," : "", (unsigned long long)rep->test_id,
-                        rep->algorithm_id, rep->algorithm_name,
-                        rep->structure_type, rep->structure_name,
-                        rep->metrics.item_count,
-                        (long long)rep->metrics.comparisons,
-                        (long long)rep->metrics.swaps, rep->metrics.elapsed_ms,
-                        rep->metrics.memory_bytes,
-                        rep->metrics.operation_count);
+                        i ? "," : "", 
+                        (unsigned long long)current_report->test_id,
+                        current_report->algorithm_id, 
+                        current_report->algorithm_name,
+                        current_report->structure_type, 
+                        current_report->structure_name,
+                        current_report->metrics.item_count,
+                        (long long)current_report->metrics.comparisons,
+                        (long long)current_report->metrics.swaps, 
+                        current_report->metrics.elapsed_ms,
+                        current_report->metrics.memory_bytes,
+                        current_report->metrics.operation_count);
   }
 
   json_builder_append(&json, "]}");
+
   return json_builder_detach(&json);
 }
 

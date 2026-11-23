@@ -9,6 +9,7 @@ int history_store_init(void) {
   }
 
   g_history_table = hash_table_create(HASH_TABLE_DEFAULT_BUCKETS);
+
   return g_history_table != NULL;
 }
 
@@ -19,9 +20,7 @@ void history_store_destroy(void) {
   }
 }
 
-uint64_t history_store_record(const int32_t *input, const int32_t *sorted,
-                              const Metrics *metrics,
-                              const Operation *operations) {
+uint64_t history_store_record(const int32_t *input, const int32_t *sorted, const Metrics *metrics, const Operation *operations) {
   if (g_history_table == NULL || metrics == NULL) {
     return 0;
   }
