@@ -76,6 +76,7 @@ static void free_report_contents(TestReport *report) {
   if (report == NULL) {
     return;
   }
+
   free(report->algorithm_name);
   free(report->structure_name);
   free(report->input_values);
@@ -89,17 +90,21 @@ HashTable *hash_table_create(size_t initial_bucket_count) {
     initial_bucket_count = HASH_TABLE_DEFAULT_BUCKETS;
   }
 
-  HashTable *table = (HashTable *)malloc(sizeof(HashTable));
+  HashTable *table = (HashTable *) malloc(sizeof(HashTable));
+
   if (table == NULL) {
     return NULL;
   }
 
   table->buckets =
       (HashNode **)malloc(initial_bucket_count * sizeof(HashNode *));
+
   if (table->buckets == NULL) {
     free(table);
+
     return NULL;
   }
+
   memset(table->buckets, 0, initial_bucket_count * sizeof(HashNode *));
 
   table->bucket_count = initial_bucket_count;
@@ -107,6 +112,7 @@ HashTable *hash_table_create(size_t initial_bucket_count) {
   table->next_test_id = 1;
   table->memory_bytes =
       sizeof(HashTable) + initial_bucket_count * sizeof(HashNode *);
+      
   return table;
 }
 
@@ -163,8 +169,7 @@ static int hash_table_resize(HashTable *table, size_t new_bucket_count) {
   return 1;
 }
 
-uint64_t hash_table_insert(HashTable *table, const char *algorithm_name,
-                           const TestReport *report) {
+uint64_t hash_table_insert(HashTable *table, const char *algorithm_name, const TestReport *report) {
   if (table == NULL || algorithm_name == NULL || report == NULL ||
       report->input_values == NULL || report->sorted_values == NULL ||
       report->metrics.item_count < 1) {
@@ -177,9 +182,11 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name,
   }
 
   HashNode *node = (HashNode *)malloc(sizeof(HashNode));
+
   if (node == NULL) {
     return 0;
   }
+
   memset(node, 0, sizeof(HashNode));
 
   node->report.test_id = table->next_test_id++;
@@ -190,7 +197,7 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name,
   node->report.algorithm_name = duplicate_string(algorithm_name);
   node->report.structure_name = duplicate_string(
       report->structure_name ? report->structure_name
-                             : sort_structure_name(report->structure_type));
+                             : get_sort_structure_name(report->structure_type));
 
   size_t values_bytes = (size_t)report->metrics.item_count * sizeof(int32_t);
   node->report.input_values = (int32_t *)malloc(values_bytes);
@@ -202,6 +209,7 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name,
       node->report.sorted_values == NULL) {
     free_report_contents(&node->report);
     free(node);
+
     return 0;
   }
 
@@ -209,14 +217,17 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name,
   memcpy(node->report.sorted_values, report->sorted_values, values_bytes);
 
   if (report->metrics.operation_count > 0 && report->operations != NULL) {
-    size_t ops_bytes =
-        (size_t)report->metrics.operation_count * sizeof(Operation);
+    size_t ops_bytes = (size_t)report->metrics.operation_count * sizeof(Operation);
+
     node->report.operations = (Operation *)malloc(ops_bytes);
+
     if (node->report.operations == NULL) {
       free_report_contents(&node->report);
       free(node);
+
       return 0;
     }
+
     memcpy(node->report.operations, report->operations, ops_bytes);
   } else {
     node->report.operations = NULL;
@@ -231,6 +242,7 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name,
 
   table->item_count++;
   table->memory_bytes += sizeof(HashNode) + report_dynamic_bytes(&node->report);
+  
   return node->report.test_id;
 }
 

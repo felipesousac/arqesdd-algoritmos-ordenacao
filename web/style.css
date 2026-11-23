@@ -135,14 +135,6 @@ select:focus {
   border-color: var(--cyan);
 }
 
-.algorithm-note {
-  color: #91a0b3;
-  font-size: 11px;
-  line-height: 1.5;
-  margin: 7px 1px 0;
-  min-height: 30px;
-}
-
 input[type="range"] {
   accent-color: var(--cyan);
   height: 13px;

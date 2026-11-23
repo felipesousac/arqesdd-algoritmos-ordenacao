@@ -15,8 +15,8 @@ struct doubly_linked_list {
 };
 
 DoublyLinkedList *doubly_list_create(void) {
-  DoublyLinkedList *list =
-      (DoublyLinkedList *)malloc(sizeof(DoublyLinkedList));
+  DoublyLinkedList *list = (DoublyLinkedList *)malloc(sizeof(DoublyLinkedList));
+  
   if (list == NULL) {
     return NULL;
   }
@@ -25,6 +25,7 @@ DoublyLinkedList *doubly_list_create(void) {
   list->tail = NULL;
   list->size = 0;
   list->memory_bytes = sizeof(DoublyLinkedList);
+
   return list;
 }
 
@@ -60,6 +61,7 @@ int doubly_list_insert_end(DoublyLinkedList *list, int32_t value) {
   }
 
   DoublyNode *node = (DoublyNode *)malloc(sizeof(DoublyNode));
+
   if (node == NULL) {
     return 0;
   }
@@ -77,6 +79,7 @@ int doubly_list_insert_end(DoublyLinkedList *list, int32_t value) {
 
   list->size++;
   list->memory_bytes += sizeof(DoublyNode);
+
   return 1;
 }
 
@@ -188,18 +191,19 @@ int doubly_list_set(DoublyLinkedList *list, int index, int32_t value) {
   return 1;
 }
 
-int doubly_list_from_array(DoublyLinkedList *list, const int32_t *values,
-                           int count) {
+int doubly_list_from_array(DoublyLinkedList *list, const int32_t *values, int count) {
   if (list == NULL || values == NULL || count < 0) {
     return 0;
   }
 
   doubly_list_clear(list);
+
   for (int i = 0; i < count; i++) {
     if (!doubly_list_insert_end(list, values[i])) {
       return 0;
     }
   }
+
   return 1;
 }
 
@@ -288,9 +292,7 @@ static inline void emit_write(const ListSortObserver *obs, int idx, int32_t val,
 }
 
 /* Swaps two nodes in the doubly linked list by relinking prev/next pointers */
-static void doubly_swap_nodes_by_index(DoublyLinkedList *list, int first_index,
-                                       int second_index,
-                                       const ListSortObserver *obs) {
+static void doubly_swap_nodes_by_index(DoublyLinkedList *list, int first_index, int second_index, const ListSortObserver *obs) {
   if (first_index == second_index) {
     return;
   }
@@ -300,14 +302,13 @@ static void doubly_swap_nodes_by_index(DoublyLinkedList *list, int first_index,
 
   DoublyNode *left_node = doubly_node_at(list, left_idx);
   DoublyNode *right_node = doubly_node_at(list, right_idx);
+
   if (left_node == NULL || right_node == NULL) {
     return;
   }
 
-  int32_t first_val =
-      (first_index == left_idx) ? left_node->data : right_node->data;
-  int32_t second_val =
-      (first_index == left_idx) ? right_node->data : left_node->data;
+  int32_t first_val = (first_index == left_idx) ? left_node->data : right_node->data;
+  int32_t second_val = (first_index == left_idx) ? right_node->data : left_node->data;
 
   if (left_node->next == right_node) {
     /* Adjacent nodes: left_node <-> right_node */
@@ -319,10 +320,12 @@ static void doubly_swap_nodes_by_index(DoublyLinkedList *list, int first_index,
     } else {
       list->head = right_node;
     }
+
     right_node->prev = before;
     right_node->next = left_node;
     left_node->prev = right_node;
     left_node->next = after;
+
     if (after != NULL) {
       after->prev = left_node;
     } else {
@@ -339,20 +342,24 @@ static void doubly_swap_nodes_by_index(DoublyLinkedList *list, int first_index,
     } else {
       list->head = right_node;
     }
+
     if (left_next != NULL) {
       left_next->prev = right_node;
     }
+
     right_node->prev = left_prev;
     right_node->next = left_next;
 
     if (right_prev != NULL) {
       right_prev->next = left_node;
     }
+
     if (right_next != NULL) {
       right_next->prev = left_node;
     } else {
       list->tail = left_node;
     }
+
     left_node->prev = right_prev;
     left_node->next = right_next;
   }
@@ -360,21 +367,17 @@ static void doubly_swap_nodes_by_index(DoublyLinkedList *list, int first_index,
   emit_swap(obs, first_index, second_index, second_val, first_val);
 }
 
-static void doubly_bubble_sort(DoublyLinkedList *list,
-                               const ListSortObserver *obs) {
-  if (list->size < 2) {
-    return;
-  }
-
+static void doubly_bubble_sort(DoublyLinkedList *list, const ListSortObserver *obs) {
   int made_swap;
+
   do {
     made_swap = 0;
+
     DoublyNode *curr = list->head;
 
-    for (int index = 0;
-         index < list->size - 1 && curr != NULL && curr->next != NULL;
-         index++) {
+    for (int index = 0; index < list->size - 1 && curr != NULL && curr->next != NULL; index++) {
       DoublyNode *next_node = curr->next;
+
       emit_compare(obs, index + 1, index, next_node->data, curr->data);
 
       if (next_node->data < curr->data) {
@@ -389,10 +392,12 @@ static void doubly_bubble_sort(DoublyLinkedList *list,
         } else {
           list->head = next_node;
         }
+
         next_node->prev = before;
         next_node->next = curr;
         curr->prev = next_node;
         curr->next = after;
+
         if (after != NULL) {
           after->prev = curr;
         } else {
@@ -400,6 +405,7 @@ static void doubly_bubble_sort(DoublyLinkedList *list,
         }
 
         emit_swap(obs, index, index + 1, second_val, first_val);
+
         made_swap = 1;
       } else {
         curr = curr->next;
@@ -408,22 +414,23 @@ static void doubly_bubble_sort(DoublyLinkedList *list,
   } while (made_swap);
 }
 
-static void doubly_selection_sort(DoublyLinkedList *list,
-                                  const ListSortObserver *obs) {
+static void doubly_selection_sort(DoublyLinkedList *list, const ListSortObserver *obs) {
   for (int position = 0; position < list->size - 1; position++) {
     DoublyNode *pos_node = doubly_node_at(list, position);
+
     int smallest_index = position;
+
     DoublyNode *smallest_node = pos_node;
     DoublyNode *candidate_node = pos_node->next;
 
-    for (int candidate = position + 1;
-         candidate < list->size && candidate_node != NULL; candidate++) {
-      emit_compare(obs, candidate, smallest_index, candidate_node->data,
-                   smallest_node->data);
+    for (int candidate = position + 1; candidate < list->size && candidate_node != NULL; candidate++) {
+      emit_compare(obs, candidate, smallest_index, candidate_node->data, smallest_node->data);
+      
       if (candidate_node->data < smallest_node->data) {
         smallest_index = candidate;
         smallest_node = candidate_node;
       }
+
       candidate_node = candidate_node->next;
     }
 
@@ -433,13 +440,9 @@ static void doubly_selection_sort(DoublyLinkedList *list,
   }
 }
 
-static void doubly_insertion_sort(DoublyLinkedList *list,
-                                  const ListSortObserver *obs) {
-  if (list->size < 2) {
-    return;
-  }
-
+static void doubly_insertion_sort(DoublyLinkedList *list, const ListSortObserver *obs) {
   DoublyNode *last_sorted = list->head;
+
   for (int position = 1; position < list->size; position++) {
     DoublyNode *curr = last_sorted->next;
     int32_t value_to_insert = curr->data;
@@ -449,21 +452,24 @@ static void doubly_insertion_sort(DoublyLinkedList *list,
     int previous_position = position - 1;
 
     while (previous_position >= 0 && scan != NULL) {
-      emit_compare(obs, previous_position, position, scan->data,
-                   value_to_insert);
+      emit_compare(obs, previous_position, position, scan->data, value_to_insert);
+      
       if (scan->data <= value_to_insert) {
         break;
       }
 
       emit_write(obs, previous_position + 1, scan->data, 1);
+
       scan = scan->prev;
       previous_position--;
     }
 
     int target_index = previous_position + 1;
+
     if (target_index != position) {
       /* Detach curr from its position */
       last_sorted->next = curr->next;
+
       if (curr->next != NULL) {
         curr->next->prev = last_sorted;
       } else {
@@ -474,16 +480,20 @@ static void doubly_insertion_sort(DoublyLinkedList *list,
       if (scan == NULL) {
         curr->prev = NULL;
         curr->next = list->head;
+
         if (list->head != NULL) {
           list->head->prev = curr;
         }
+
         list->head = curr;
       } else {
         curr->next = scan->next;
         curr->prev = scan;
+
         if (scan->next != NULL) {
           scan->next->prev = curr;
         }
+
         scan->next = curr;
       }
 
@@ -494,29 +504,31 @@ static void doubly_insertion_sort(DoublyLinkedList *list,
   }
 }
 
-static int doubly_partition(DoublyLinkedList *list, int low, int high,
-                            const ListSortObserver *obs) {
+static int doubly_partition(DoublyLinkedList *list, int low, int high, const ListSortObserver *obs) {
   DoublyNode *high_node = doubly_node_at(list, high);
   int32_t pivot_value = high_node->data;
   int last_smaller_index = low - 1;
 
   for (int scan_index = low; scan_index < high; scan_index++) {
     DoublyNode *scan_node = doubly_node_at(list, scan_index);
+
     emit_compare(obs, scan_index, high, scan_node->data, pivot_value);
 
     if (scan_node->data < pivot_value) {
       last_smaller_index++;
+
       doubly_swap_nodes_by_index(list, last_smaller_index, scan_index, obs);
     }
   }
 
   int pivot_index = last_smaller_index + 1;
+
   doubly_swap_nodes_by_index(list, pivot_index, high, obs);
+
   return pivot_index;
 }
 
-static void doubly_quick_sort_range(DoublyLinkedList *list, int low, int high,
-                                    const ListSortObserver *obs) {
+static void doubly_quick_sort_range(DoublyLinkedList *list, int low, int high, const ListSortObserver *obs) {
   if (low >= high) {
     return;
   }
@@ -526,8 +538,7 @@ static void doubly_quick_sort_range(DoublyLinkedList *list, int low, int high,
   doubly_quick_sort_range(list, pivot_index + 1, high, obs);
 }
 
-static DoublyNode *doubly_merge_sort_nodes(DoublyNode *head, int low, int high,
-                                           const ListSortObserver *obs) {
+static DoublyNode *doubly_merge_sort_nodes(DoublyNode *head, int low, int high, const ListSortObserver *obs) {
   if (head == NULL || head->next == NULL || low >= high) {
     return head;
   }
@@ -536,34 +547,35 @@ static DoublyNode *doubly_merge_sort_nodes(DoublyNode *head, int low, int high,
   int left_len = middle - low + 1;
 
   DoublyNode *mid_node = head;
+
   for (int i = 1; i < left_len && mid_node->next != NULL; i++) {
     mid_node = mid_node->next;
   }
 
   DoublyNode *right_head = mid_node->next;
   mid_node->next = NULL;
+
   if (right_head != NULL) {
     right_head->prev = NULL;
   }
 
-  DoublyNode *left_sorted =
-      doubly_merge_sort_nodes(head, low, middle, obs);
-  DoublyNode *right_sorted =
-      doubly_merge_sort_nodes(right_head, middle + 1, high, obs);
+  DoublyNode *left_sorted = doubly_merge_sort_nodes(head, low, middle, obs);
+  DoublyNode *right_sorted = doubly_merge_sort_nodes(right_head, middle + 1, high, obs);
 
-  DoublyNode dummy;
-  dummy.next = NULL;
-  dummy.prev = NULL;
-  DoublyNode *tail = &dummy;
+  DoublyNode temp_head;
+  temp_head.next = NULL;
+  temp_head.prev = NULL;
+  DoublyNode *tail = &temp_head;
 
   int left_index = low;
   int right_index = middle + 1;
+
   DoublyNode *left_curr = left_sorted;
   DoublyNode *right_curr = right_sorted;
 
   while (left_curr != NULL && right_curr != NULL) {
-    emit_compare(obs, left_index, right_index, left_curr->data,
-                 right_curr->data);
+    emit_compare(obs, left_index, right_index, left_curr->data, right_curr->data);
+    
     if (left_curr->data <= right_curr->data) {
       tail->next = left_curr;
       left_curr->prev = tail;
@@ -575,66 +587,70 @@ static DoublyNode *doubly_merge_sort_nodes(DoublyNode *head, int low, int high,
       right_curr = right_curr->next;
       right_index++;
     }
+
     tail = tail->next;
   }
 
   DoublyNode *remainder = (left_curr != NULL) ? left_curr : right_curr;
   tail->next = remainder;
+
   if (remainder != NULL) {
     remainder->prev = tail;
   }
 
-  if (dummy.next != NULL) {
-    dummy.next->prev = NULL;
+  if (temp_head.next != NULL) {
+    temp_head.next->prev = NULL;
   }
 
-  DoublyNode *scan = dummy.next;
+  DoublyNode *scan = temp_head.next;
+
   for (int idx = low; idx <= high && scan != NULL; idx++) {
     emit_write(obs, idx, scan->data, 1);
     scan = scan->next;
   }
 
-  return dummy.next;
+  return temp_head.next;
 }
 
-static void doubly_merge_sort(DoublyLinkedList *list,
-                              const ListSortObserver *obs) {
-  if (list->size < 2) {
-    return;
-  }
-
+static void doubly_merge_sort(DoublyLinkedList *list, const ListSortObserver *obs) {
   list->head = doubly_merge_sort_nodes(list->head, 0, list->size - 1, obs);
+
   DoublyNode *curr = list->head;
+
   while (curr != NULL && curr->next != NULL) {
     curr = curr->next;
   }
+  
   list->tail = curr;
 }
 
-int doubly_list_sort(DoublyLinkedList *list, int algorithm,
-                     const ListSortObserver *observer) {
-  if (list == NULL || list->size < 1) {
+int doubly_list_sort(DoublyLinkedList *list, int algorithm, const ListSortObserver *observer) {
+  if (list == NULL || list->size < 1 || algorithm < 0 || algorithm > 4) {
     return 0;
   }
 
+  if (list->size < 2) {
+    return 1;
+  }
+
   switch (algorithm) {
-  case 0:
-    doubly_bubble_sort(list, observer);
-    break;
-  case 1:
-    doubly_selection_sort(list, observer);
-    break;
-  case 2:
-    doubly_insertion_sort(list, observer);
-    break;
-  case 3:
-    doubly_quick_sort_range(list, 0, list->size - 1, observer);
-    break;
-  case 4:
-    doubly_merge_sort(list, observer);
-    break;
-  default:
-    return 0;
+    case 0:
+      doubly_bubble_sort(list, observer);
+      break;
+    case 1:
+      doubly_selection_sort(list, observer);
+      break;
+    case 2:
+      doubly_insertion_sort(list, observer);
+      break;
+    case 3:
+      doubly_quick_sort_range(list, 0, list->size - 1, observer);
+      break;
+    case 4:
+      doubly_merge_sort(list, observer);
+      break;
+    default:
+      return 0;
   }
 
   return 1;

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b1220" />
-    <title>Ordena — Plataforma de Análise de Estruturas e Algoritmos</title>
+    <title>Ordena</title>
     <link rel="stylesheet" href="web/style.css" />
   </head>
   <body>
@@ -31,9 +31,6 @@
               <option value="3">Quick Sort</option>
               <option value="4">Merge Sort</option>
             </select>
-            <p class="algorithm-note" id="algorithmNote">
-              Percorre a lista repetidamente, trocando vizinhos fora de ordem.
-            </p>
           </div>
 
           <div class="control-section">
@@ -54,10 +51,6 @@
                 Lista Circular Encadeada (Anel de Ponteiros)
               </option>
             </select>
-            <p class="algorithm-note" id="structureNote">
-              Bloco contíguo no heap alocado com malloc/realloc; acesso O(1) por
-              índice.
-            </p>
           </div>
 
           <div class="control-section">
@@ -330,7 +323,9 @@
                 >HISTÓRICO EM MEMÓRIA (TAD TABELA HASH EM C — ENCADEAMENTO
                 EXTERIOR)</span
               >
-              <h2 class="lab-title">Consultar Testes Anteriores por Algoritmo</h2>
+              <h2 class="lab-title">
+                Consultar Testes Anteriores por Algoritmo
+              </h2>
             </div>
             <span class="badge-pill" id="hashStatsBadge"
               >0 testes · 11 buckets</span
@@ -347,7 +342,9 @@
               id="historyFilter"
               aria-label="Filtrar histórico pelo nome do algoritmo"
             >
-              <option value="all">Todos os Algoritmos (Todos os Buckets)</option>
+              <option value="all">
+                Todos os Algoritmos (Todos os Buckets)
+              </option>
               <option value="Bubble Sort">Bucket: Bubble Sort</option>
               <option value="Selection Sort">Bucket: Selection Sort</option>
               <option value="Insertion Sort">Bucket: Insertion Sort</option>
@@ -393,13 +390,7 @@
         </div>
       </section>
 
-      <footer>
-        <span>IFSP Araraquara — Estrutura de Dados (ARQESDD)</span
-        ><span
-          >Alocação Dinâmica · Listas Encadeadas · Pilha · Fila · Tabela
-          Hash</span
-        >
-      </footer>
+      <footer><span>IFSP Araraquara</span><span>ARQESDD</span></footer>
     </main>
 
     <div
@@ -421,11 +412,7 @@
           <code>HashTable</code> em C. Essa operação não pode ser desfeita.
         </p>
         <div class="modal-actions">
-          <button
-            type="button"
-            class="apply-button"
-            id="cancelClearHistory"
-          >
+          <button type="button" class="apply-button" id="cancelClearHistory">
             Cancelar
           </button>
           <button

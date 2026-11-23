@@ -33,26 +33,32 @@ static void json_append(Json *json, const char *format, ...) {
 
   va_list copy;
   va_copy(copy, args);
+
   int needed = vsnprintf(NULL, 0, format, copy);
   va_end(copy);
 
   if (needed < 0 || (size_t)needed > MAX_JSON - json->length) {
     json->failed = 1;
     va_end(args);
+
     return;
   }
 
   size_t required = json->length + (size_t)needed + 1;
+
   if (required > json->capacity) {
     size_t capacity = json->capacity ? json->capacity : 4096;
+
     while (capacity < required) {
       capacity *= 2;
     }
 
     char *data = (char *)realloc(json->data, capacity);
+
     if (!data) {
       json->failed = 1;
       va_end(args);
+
       return;
     }
 
@@ -60,15 +66,13 @@ static void json_append(Json *json, const char *format, ...) {
     json->capacity = capacity;
   }
 
-  vsnprintf(json->data + json->length, json->capacity - json->length, format,
-            args);
+  vsnprintf(json->data + json->length, json->capacity - json->length, format, args);
   json->length += (size_t)needed;
   va_end(args);
 }
 
 /* Dynamically parses CSV/space-separated integers using SequentialList */
-static int parse_values_dynamic(const char *text, int32_t **out_values,
-                                int *out_count) {
+static int parse_values_dynamic(const char *text, int32_t **out_values, int *out_count) {
   *out_values = NULL;
   *out_count = 0;
 
@@ -77,63 +81,79 @@ static int parse_values_dynamic(const char *text, int32_t **out_values,
   }
 
   SequentialList *list = seq_list_create(sizeof(int32_t));
+
   if (list == NULL) {
     return 0;
   }
 
   const char *cursor = text;
+
   while (*cursor) {
     while (*cursor == ' ' || *cursor == ',' || *cursor == ';' ||
            *cursor == '\n' || *cursor == '\r' || *cursor == '\t') {
       cursor++;
     }
+
     if (!*cursor) {
       break;
     }
+
     if (seq_list_size(list) >= API_MAX_INPUT) {
       seq_list_destroy(list);
+
       return 0;
     }
 
     errno = 0;
     char *end = NULL;
     long value = strtol(cursor, &end, 10);
+
     if (end == cursor || errno != 0 || value < 1 || value > 1000000) {
       seq_list_destroy(list);
+
       return 0;
     }
 
-    int32_t item = (int32_t)value;
+    int32_t item = (int32_t) value;
+
     if (!seq_list_insert_end(list, &item)) {
       seq_list_destroy(list);
+
       return 0;
     }
 
     if (*end && *end != ' ' && *end != ',' && *end != ';' && *end != '\n' &&
         *end != '\r' && *end != '\t') {
       seq_list_destroy(list);
+
       return 0;
     }
+
     cursor = end;
   }
 
   int count = seq_list_size(list);
+
   if (count < 2) {
     seq_list_destroy(list);
+
     return 0;
   }
 
-  int32_t *values = (int32_t *)malloc((size_t)count * sizeof(int32_t));
-  if (values == NULL) {
+  int32_t *parsed_numbers = (int32_t *) malloc((size_t)count * sizeof(int32_t));
+
+  if (parsed_numbers == NULL) {
     seq_list_destroy(list);
+
     return 0;
   }
 
-  memcpy(values, seq_list_data(list), (size_t)count * sizeof(int32_t));
+  memcpy(parsed_numbers, seq_list_data(list), (size_t) count * sizeof(int32_t));
   seq_list_destroy(list);
 
-  *out_values = values;
+  *out_values = parsed_numbers;
   *out_count = count;
+
   return 1;
 }
 
@@ -193,8 +213,8 @@ static uint64_t record_run_in_hash_table(const int32_t *input,
     return 0;
   }
 
-  const char *alg_name = sort_algorithm_name(metrics->algorithm);
-  const char *struct_name = sort_structure_name(metrics->structure_type);
+  const char *alg_name = get_sort_algorithm_name(metrics->algorithm);
+  const char *struct_name = get_sort_structure_name(metrics->structure_type);
 
   TestReport report;
   memset(&report, 0, sizeof(report));
@@ -214,8 +234,9 @@ static char *build_sort_json(uint64_t test_id, const int32_t *input,
                              const int32_t *sorted, const Metrics *metrics,
                              const Operation *operations) {
   Json json = {0};
-  SequentialList *history = seq_list_create_with_capacity(
-      sizeof(Operation), metrics->operation_count > 0 ? metrics->operation_count : 8);
+
+  SequentialList *history = seq_list_create_with_capacity(sizeof(Operation), metrics->operation_count > 0 ? metrics->operation_count : 8);
+
   if (!history) {
     return NULL;
   }
@@ -230,14 +251,18 @@ static char *build_sort_json(uint64_t test_id, const int32_t *input,
   json_append(&json,
               "{\"testId\":%llu,\"algorithm\":%d,\"algorithmName\":\"%s\","
               "\"structure\":%d,\"structureName\":\"%s\",\"input\":[",
-              (unsigned long long)test_id, metrics->algorithm,
-              sort_algorithm_name(metrics->algorithm), metrics->structure_type,
-              sort_structure_name(metrics->structure_type));
+              (unsigned long long)test_id, 
+              metrics->algorithm,
+              get_sort_algorithm_name(metrics->algorithm), 
+              metrics->structure_type,
+              get_sort_structure_name(metrics->structure_type));
+
   for (int i = 0; i < metrics->item_count; i++) {
     json_append(&json, "%s%d", i ? "," : "", input[i]);
   }
 
   json_append(&json, "],\"sorted\":[");
+
   for (int i = 0; i < metrics->item_count; i++) {
     json_append(&json, "%s%d", i ? "," : "", sorted[i]);
   }
@@ -247,12 +272,16 @@ static char *build_sort_json(uint64_t test_id, const int32_t *input,
               "\"comparisons\":%lld,\"swaps\":%lld,"
               "\"elapsedMs\":%.6f,\"memoryBytes\":%zu,\"operationCount\":%d},"
               "\"operations\":[",
-              metrics->item_count, (long long)metrics->comparisons,
-              (long long)metrics->swaps, metrics->elapsed_ms,
-              metrics->memory_bytes, metrics->operation_count);
+              metrics->item_count, 
+              (long long)metrics->comparisons,
+              (long long)metrics->swaps, 
+              metrics->elapsed_ms,
+              metrics->memory_bytes, 
+              metrics->operation_count);
 
   for (int i = 0; i < seq_list_size(history); i++) {
     Operation operation;
+
     if (!seq_list_get(history, i, &operation)) {
       json.failed = 1;
       break;
@@ -262,17 +291,24 @@ static char *build_sort_json(uint64_t test_id, const int32_t *input,
                 "%s{\"type\":%d,\"firstIndex\":%d,"
                 "\"secondIndex\":%d,\"firstValue\":%d,"
                 "\"secondValue\":%d}",
-                i ? "," : "", operation.type, operation.first_index,
-                operation.second_index, operation.first_value,
+                i ? "," : "", 
+                operation.type, 
+                operation.first_index,
+                operation.second_index, 
+                operation.first_value,
                 operation.second_value);
   }
 
   json_append(&json, "]}");
+
   seq_list_destroy(history);
+
   if (json.failed) {
     free(json.data);
+
     return NULL;
   }
+
   return json.data;
 }
 
@@ -282,10 +318,10 @@ static void reply_error(struct mg_connection *c, int status,
                 "{\"error\":\"%s\"}\n", message);
 }
 
-static void handle_api_sort(struct mg_connection *c,
-                            struct mg_http_message *request) {
+static void handle_api_sort(struct mg_connection *c, struct mg_http_message *request) {
   if (mg_strcmp(request->method, mg_str("GET")) != 0) {
     reply_error(c, 405, "Method Not Allowed: use GET");
+
     return;
   }
 
@@ -293,22 +329,23 @@ static void handle_api_sort(struct mg_connection *c,
   char structure_text[16] = {0};
   char values_text[MAX_QUERY] = {0};
 
-  if (mg_http_get_var(&request->query, "algorithm", algorithm_text,
-                      sizeof(algorithm_text)) <= 0 ||
-      mg_http_get_var(&request->query, "values", values_text,
-                      sizeof(values_text)) <= 0) {
+  if (mg_http_get_var(&request->query, "algorithm", algorithm_text, sizeof(algorithm_text)) <= 0 ||
+      mg_http_get_var(&request->query, "values", values_text, sizeof(values_text)) <= 0) {
     reply_error(c, 400, "Missing required parameters: algorithm and values");
+
     return;
   }
 
   long structure = STRUCT_SEQUENTIAL;
-  if (mg_http_get_var(&request->query, "structure", structure_text,
-                      sizeof(structure_text)) > 0) {
+  
+  if (mg_http_get_var(&request->query, "structure", structure_text, sizeof(structure_text)) > 0) {
     char *s_end = NULL;
+
     structure = strtol(structure_text, &s_end, 10);
-    if (*s_end || structure < STRUCT_SEQUENTIAL ||
-        structure > STRUCT_CIRCULAR) {
+
+    if (*s_end || structure < STRUCT_SEQUENTIAL || structure > STRUCT_CIRCULAR) {
       reply_error(c, 400, "Invalid structure parameter");
+
       return;
     }
   }
@@ -322,30 +359,32 @@ static void handle_api_sort(struct mg_connection *c,
       !parse_values_dynamic(values_text, &values, &count)) {
     free(values);
     reply_error(c, 400, "Invalid parameters");
+
     return;
   }
 
-  if (!sort_run(values, count, (int)algorithm, (int)structure, 2000000)) {
+  if (!sort_run(values, count, (int) algorithm, (int) structure, 2000000)) {
     free(values);
     reply_error(c, 500, "Failed to run sorting algorithm");
+
     return;
   }
 
-  uint64_t test_id = record_run_in_hash_table(values, sort_values(),
-                                              sort_metrics(), sort_operations());
+  uint64_t test_id = record_run_in_hash_table(values, sort_values(), sort_metrics(), sort_operations());
 
-  char *body = build_sort_json(test_id, values, sort_values(), sort_metrics(),
-                               sort_operations());
+  char *body = build_sort_json(test_id, values, sort_values(), sort_metrics(), sort_operations());
+  
   free(values);
   sort_free();
 
   if (!body) {
     reply_error(c, 500, "Failed to serialize sorting history");
+
     return;
   }
 
-  mg_http_reply(c, 200, "Content-Type: application/json; charset=utf-8\r\n",
-                "%s", body);
+  mg_http_reply(c, 200, "Content-Type: application/json; charset=utf-8\r\n", "%s", body);
+  
   free(body);
 }
 
@@ -457,8 +496,8 @@ static void handle_api_batch(struct mg_connection *c,
                   "\"swaps\":%lld,\"elapsedMs\":%.6f,\"memoryBytes\":%zu,"
                   "\"operationCount\":%d}}",
                   result_index ? "," : "", (unsigned long long)test_id,
-                  m->algorithm, sort_algorithm_name(m->algorithm),
-                  m->structure_type, sort_structure_name(m->structure_type),
+                  m->algorithm, get_sort_algorithm_name(m->algorithm),
+                  m->structure_type, get_sort_structure_name(m->structure_type),
                   m->item_count, (long long)m->comparisons,
                   (long long)m->swaps, m->elapsed_ms, m->memory_bytes,
                   m->operation_count);
@@ -496,7 +535,7 @@ static void handle_api_history(struct mg_connection *c,
   const char *lookup_key = algorithm_filter;
   if (algorithm_filter[0] >= '0' && algorithm_filter[0] <= '4' &&
       algorithm_filter[1] == '\0') {
-    lookup_key = sort_algorithm_name(algorithm_filter[0] - '0');
+    lookup_key = get_sort_algorithm_name(algorithm_filter[0] - '0');
   } else if (strcmp(algorithm_filter, "all") == 0) {
     lookup_key = "";
   }
@@ -610,29 +649,33 @@ static void handle_api_history_clear(struct mg_connection *c,
       hash_table_memory_usage(g_history_table));
 }
 
-static void event_handler(struct mg_connection *c, int event,
-                          void *event_data) {
+static void event_handler(struct mg_connection *c, int event, void *event_data) {
   if (event != MG_EV_HTTP_MSG) {
     return;
   }
 
-  struct mg_http_message *request = (struct mg_http_message *)event_data;
+  struct mg_http_message *request = (struct mg_http_message *) event_data;
+
   if (mg_match(request->uri, mg_str("/api/sort"), NULL)) {
     handle_api_sort(c, request);
     return;
   }
+
   if (mg_match(request->uri, mg_str("/api/batch"), NULL)) {
     handle_api_batch(c, request);
     return;
   }
+
   if (mg_match(request->uri, mg_str("/api/history/clear"), NULL)) {
     handle_api_history_clear(c, request);
     return;
   }
+
   if (mg_match(request->uri, mg_str("/api/history/detail"), NULL)) {
     handle_api_history_detail(c, request);
     return;
   }
+
   if (mg_match(request->uri, mg_str("/api/history"), NULL)) {
     handle_api_history(c, request);
     return;
@@ -640,6 +683,7 @@ static void event_handler(struct mg_connection *c, int event,
 
   if (mg_strcmp(request->method, mg_str("GET")) == 0) {
     const char *path = NULL;
+
     if (mg_match(request->uri, mg_str("/"), NULL) ||
         mg_match(request->uri, mg_str("/index.html"), NULL)) {
       path = "index.html";
@@ -651,6 +695,7 @@ static void event_handler(struct mg_connection *c, int event,
 
     if (path) {
       struct mg_http_serve_opts options = {.fs = &mg_fs_posix};
+
       mg_http_serve_file(c, request, path, &options);
     } else {
       reply_error(c, 404, "Route not found");
@@ -664,21 +709,27 @@ int main(int argc, char **argv) {
   const char *address = argc > 1 ? argv[1] : "http://0.0.0.0:8000";
 
   g_history_table = hash_table_create(HASH_TABLE_DEFAULT_BUCKETS);
+
   if (!g_history_table) {
     fprintf(stderr, "Failed to initialize in-memory Hash Table\n");
+
     return 1;
   }
 
   struct mg_mgr manager;
+
   mg_mgr_init(&manager);
+
   if (!mg_http_listen(&manager, address, event_handler, NULL)) {
     fprintf(stderr, "Could not start server on %s\n", address);
     mg_mgr_free(&manager);
     hash_table_destroy(g_history_table);
+
     return 1;
   }
 
   printf("Ordena Server listening on %s\n", address);
+
   for (;;) {
     mg_mgr_poll(&manager, 1000);
   }

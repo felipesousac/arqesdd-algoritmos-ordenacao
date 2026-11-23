@@ -49,8 +49,8 @@ int sort_run(const int32_t *input, int item_count, int algorithm,
 const int32_t *sort_values(void);
 const Metrics *sort_metrics(void);
 const Operation *sort_operations(void);
-const char *sort_algorithm_name(int algorithm);
-const char *sort_structure_name(int structure_type);
+const char *get_sort_algorithm_name(int algorithm);
+const char *get_sort_structure_name(int structure_type);
 void sort_free(void);
 
 #endif
