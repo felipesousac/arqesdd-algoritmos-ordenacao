@@ -34,12 +34,14 @@ int queue_enqueue(Queue *queue, const BatchTask *task) {
   }
 
   QueueNode *node = (QueueNode *)malloc(sizeof(QueueNode));
+
   if (node == NULL) {
     return 0;
   }
 
   size_t values_bytes = (size_t)task->item_count * sizeof(int32_t);
   node->task.input_values = (int32_t *)malloc(values_bytes);
+
   if (node->task.input_values == NULL) {
     free(node);
     return 0;
@@ -61,6 +63,7 @@ int queue_enqueue(Queue *queue, const BatchTask *task) {
 
   queue->size++;
   queue->memory_bytes += sizeof(QueueNode) + values_bytes;
+
   return 1;
 }
 
@@ -95,6 +98,7 @@ int queue_size(const Queue *queue) {
   if (queue == NULL) {
     return 0;
   }
+
   return queue->size;
 }
 
@@ -102,6 +106,7 @@ size_t queue_memory_usage(const Queue *queue) {
   if (queue == NULL) {
     return 0;
   }
+  
   return queue->memory_bytes;
 }
 

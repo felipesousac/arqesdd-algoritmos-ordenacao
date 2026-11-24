@@ -73,68 +73,65 @@ static void handle_api_sort(struct mg_connection *c, struct mg_http_message *req
   free(body);
 }
 
-static void handle_api_batch(struct mg_connection *c,
-                             struct mg_http_message *request) {
-  if (!http_is_method(request, "GET") && !http_is_method(request, "POST")) {
-    http_reply_error(c, 405, "Method Not Allowed: use GET or POST");
+static void handle_api_batch(struct mg_connection *c, struct mg_http_message *request) {
+  if (!http_is_method(request, "GET")) {
+    http_reply_error(c, 405, "Method Not Allowed: use GET");
     return;
   }
-
-  struct mg_str params_source =
-      (request->query.len > 0) ? request->query : request->body;
 
   char algorithms_text[128] = {0};
   char structures_text[128] = {0};
   char values_text[MAX_QUERY] = {0};
 
-  mg_http_get_var(&params_source, "algorithms", algorithms_text,
-                  sizeof(algorithms_text));
-  mg_http_get_var(&params_source, "structures", structures_text,
-                  sizeof(structures_text));
+  mg_http_get_var(&request->query, "algorithms", algorithms_text, sizeof(algorithms_text));
+  
+  mg_http_get_var(&request->query, "structures", structures_text, sizeof(structures_text));
 
-  if (mg_http_get_var(&params_source, "values", values_text,
-                      sizeof(values_text)) <= 0) {
+  if (mg_http_get_var(&request->query, "values", values_text, sizeof(values_text)) <= 0) {
     http_reply_error(c, 400, "Missing values parameter for batch execution");
     return;
   }
 
   int32_t *values = NULL;
+
   int count = 0;
+
   if (!parse_values_dynamic(values_text, &values, &count)) {
     http_reply_error(c, 400, "Invalid values sequence for batch execution");
     return;
   }
 
-  SequentialList *alg_ids = seq_list_create(sizeof(int));
-  SequentialList *struct_ids = seq_list_create(sizeof(int));
-  if (!alg_ids || !struct_ids ||
-      !parse_id_list(algorithms_text, ALGORITHM_BUBBLE, ALGORITHM_MERGE,
-                     alg_ids) ||
-      !parse_id_list(structures_text, STRUCT_SEQUENTIAL, STRUCT_CIRCULAR,
-                     struct_ids)) {
+  SequentialList *algorithm_ids = seq_list_create(sizeof(int));
+  SequentialList *structure_ids = seq_list_create(sizeof(int));
+
+  if (!algorithm_ids || !structure_ids ||
+      !parse_id_list(algorithms_text, ALGORITHM_BUBBLE, ALGORITHM_MERGE, algorithm_ids) ||
+      !parse_id_list(structures_text, STRUCT_SEQUENTIAL, STRUCT_CIRCULAR, structure_ids)) {
     free(values);
-    seq_list_destroy(alg_ids);
-    seq_list_destroy(struct_ids);
+    seq_list_destroy(algorithm_ids);
+    seq_list_destroy(structure_ids);
     http_reply_error(c, 400, "Invalid algorithms or structures list");
     return;
   }
 
   char *body = NULL;
-  BatchStatus status = batch_runner_execute(
-      values, count, alg_ids, struct_ids, SORT_OPERATION_LIMIT, &body);
+
+  BatchStatus status = batch_runner_execute(values, count, algorithm_ids, structure_ids, SORT_OPERATION_LIMIT, &body);
 
   free(values);
-  seq_list_destroy(alg_ids);
-  seq_list_destroy(struct_ids);
+  seq_list_destroy(algorithm_ids);
+  seq_list_destroy(structure_ids);
 
   if (status == BATCH_ERR_ALLOC) {
     http_reply_error(c, 500, "Failed to allocate batch queue");
     return;
   }
+
   if (status == BATCH_ERR_ENQUEUE) {
     http_reply_error(c, 500, "Failed to enqueue batch task");
     return;
   }
+
   if (status != BATCH_OK || !body) {
     http_reply_error(c, 500, "Failed to serialize batch results");
     return;
@@ -178,34 +175,35 @@ static void handle_api_history(struct mg_connection *c, struct mg_http_message *
   free(body);
 }
 
-static void handle_api_history_detail(struct mg_connection *c,
-                                      struct mg_http_message *request) {
+static void handle_api_history_detail(struct mg_connection *c, struct mg_http_message *request) {
   if (!http_is_method(request, "GET")) {
     http_reply_error(c, 405, "Method Not Allowed: use GET");
     return;
   }
 
   char id_text[32] = {0};
+
   if (mg_http_get_var(&request->query, "id", id_text, sizeof(id_text)) <= 0) {
     http_reply_error(c, 400, "Missing id parameter");
     return;
   }
 
   uint64_t test_id = 0;
+
   if (!parse_test_id(id_text, &test_id)) {
     http_reply_error(c, 400, "Invalid test id");
     return;
   }
 
-  const TestReport *rep = history_store_get_by_id(test_id);
-  if (!rep) {
+  const TestReport *report = history_store_get_by_id(test_id);
+
+  if (!report) {
     http_reply_error(c, 404, "Test report not found in Hash Table");
     return;
   }
 
-  char *body = json_serialize_sort_result(rep->test_id, rep->input_values,
-                                          rep->sorted_values, &rep->metrics,
-                                          rep->operations);
+  char *body = json_serialize_sort_result(report->test_id, report->input_values, report->sorted_values, &report->metrics, report->operations);
+  
   if (!body) {
     http_reply_error(c, 500, "Failed to serialize test detail");
     return;
@@ -216,13 +214,15 @@ static void handle_api_history_detail(struct mg_connection *c,
 }
 
 static void handle_api_history_clear(struct mg_connection *c, struct mg_http_message *request) {
-  if (!http_is_method(request, "POST") && !http_is_method(request, "DELETE")) {
-    http_reply_error(c, 405, "Method Not Allowed: use POST or DELETE");
+  if (!http_is_method(request, "DELETE")) {
+    http_reply_error(c, 405, "Method Not Allowed: use DELETE");
     return;
   }
 
   history_store_clear();
+
   HistoryStats stats = history_store_stats();
+
   char *body = json_serialize_history_clear(&stats);
 
   if (!body) {

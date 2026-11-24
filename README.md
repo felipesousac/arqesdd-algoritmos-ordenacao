@@ -123,13 +123,13 @@ curl 'http://localhost:8000/api/sort?algorithm=4&structure=2&values=8,3,6,1,9,2'
 ```
 
 ### 5.2. Batch Benchmark Processing (Queue ADT)
-`POST /api/batch?algorithms=<csv|all>&structures=<csv|all>&values=<csv>` (also accepts `GET`)
+`GET /api/batch?algorithms=<csv>&structures=<csv>&values=<csv>`
 
 Enqueues all combinations of `(algorithm, structure)` into the dynamic C `Queue`, dequeues and executes each benchmark in FIFO order, registers every report in the `HashTable`, and returns a comparative JSON summary including `queueTasksProcessed` and `queuePeakMemoryBytes`.
 
 Example:
 ```sh
-curl -X POST 'http://localhost:8000/api/batch?algorithms=0,4&structures=0,1,2,3&values=8,3,6,1,9,2'
+curl 'http://localhost:8000/api/batch?algorithms=0,4&structures=0,1,2,3&values=8,3,6,1,9,2'
 ```
 
 ### 5.3. Query Stored History (Hash Table ADT)

@@ -590,7 +590,7 @@
         values: values.join(","),
       });
 
-      const response = await fetch(`/api/batch?${query}`, { method: "POST" });
+      const response = await fetch(`/api/batch?${query}`);
 
       const data = await response.json();
 
@@ -873,7 +873,7 @@
 
   async function confirmClearHashHistory() {
     try {
-      const response = await fetch("/api/history/clear", { method: "POST" });
+      const response = await fetch("/api/history/clear", { method: "DELETE" });
 
       if (!response.ok) {
         throw new Error("Não foi possível limpar o histórico na API C.");

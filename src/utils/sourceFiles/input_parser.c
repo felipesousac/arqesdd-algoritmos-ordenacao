@@ -85,48 +85,51 @@ int parse_values_dynamic(const char *text, int32_t **out_values,
   return 1;
 }
 
-int parse_id_list(const char *text, int min_id, int max_id,
-                  SequentialList *out_ids) {
-  if (text == NULL || text[0] == '\0' || strcmp(text, "all") == 0) {
-    for (int id = min_id; id <= max_id; id++) {
-      if (!seq_list_insert_end(out_ids, &id)) {
-        return 0;
-      }
-    }
-    return 1;
+int parse_id_list(const char *text, int min_id, int max_id, SequentialList *out_ids) {
+  if (text == NULL || text[0] == '\0') {
+    return 0;
   }
 
   const char *cursor = text;
+
   while (*cursor) {
     while (*cursor == ' ' || *cursor == ',' || *cursor == ';') {
       cursor++;
     }
+
     if (!*cursor) {
       break;
     }
 
     errno = 0;
     char *end = NULL;
-    long val = strtol(cursor, &end, 10);
+    long val = strtol(cursor, &end, 10); // String to long
+
     if (end == cursor || errno != 0 || val < min_id || val > max_id) {
       return 0;
     }
 
-    int id = (int)val;
+    int id = (int) val;
+
     int duplicate = 0;
+
     for (int i = 0; i < seq_list_size(out_ids); i++) {
       int existing = -1;
+
       seq_list_get(out_ids, i, &existing);
+
       if (existing == id) {
         duplicate = 1;
         break;
       }
     }
+
     if (!duplicate) {
       if (!seq_list_insert_end(out_ids, &id)) {
         return 0;
       }
     }
+    
     cursor = end;
   }
 
@@ -159,13 +162,14 @@ int parse_test_id(const char *text, uint64_t *out_id) {
 
   errno = 0;
   char *end = NULL;
-  unsigned long long value = strtoull(text, &end, 10);
+  unsigned long long value = strtoull(text, &end, 10); // string to unsigned long long
 
   if (end == text || *end != '\0' || errno != 0 || value == 0) {
     return 0;
   }
 
-  *out_id = (uint64_t)value;
+  *out_id = (uint64_t) value;
+
   return 1;
 }
 

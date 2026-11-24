@@ -25,7 +25,8 @@ char *json_serialize_sort_result(uint64_t test_id, const int32_t *input,
   json_builder_append(&json,
                       "{\"testId\":%llu,\"algorithm\":%d,\"algorithmName\":\"%s\","
                       "\"structure\":%d,\"structureName\":\"%s\",\"input\":[",
-                      (unsigned long long)test_id, metrics->algorithm,
+                      (unsigned long long)test_id, 
+                      metrics->algorithm,
                       get_sort_algorithm_name(metrics->algorithm),
                       metrics->structure_type,
                       get_sort_structure_name(metrics->structure_type));
@@ -45,9 +46,12 @@ char *json_serialize_sort_result(uint64_t test_id, const int32_t *input,
                       "\"comparisons\":%lld,\"swaps\":%lld,"
                       "\"elapsedMs\":%.6f,\"memoryBytes\":%zu,\"operationCount\":%d},"
                       "\"operations\":[",
-                      metrics->item_count, (long long)metrics->comparisons,
-                      (long long)metrics->swaps, metrics->elapsed_ms,
-                      metrics->memory_bytes, metrics->operation_count);
+                      metrics->item_count, 
+                      (long long)metrics->comparisons,
+                      (long long)metrics->swaps, 
+                      metrics->elapsed_ms,
+                      metrics->memory_bytes, 
+                      metrics->operation_count);
 
   for (int i = 0; i < seq_list_size(history); i++) {
     Operation operation;
@@ -61,8 +65,11 @@ char *json_serialize_sort_result(uint64_t test_id, const int32_t *input,
                         "%s{\"type\":%d,\"firstIndex\":%d,"
                         "\"secondIndex\":%d,\"firstValue\":%d,"
                         "\"secondValue\":%d}",
-                        i ? "," : "", operation.type, operation.first_index,
-                        operation.second_index, operation.first_value,
+                        i ? "," : "", 
+                        operation.type, 
+                        operation.first_index,
+                        operation.second_index, 
+                        operation.first_value,
                         operation.second_value);
   }
 
@@ -125,36 +132,41 @@ char *json_serialize_history_clear(const HistoryStats *stats) {
   json_builder_append(&json,
                       "{\"cleared\":true,\"tableStats\":{\"totalTests\":%zu,"
                       "\"bucketCount\":%zu,\"memoryBytes\":%zu}}\n",
-                      stats->total_tests, stats->bucket_count,
+                      stats->total_tests, 
+                      stats->bucket_count,
                       stats->memory_bytes);
 
   return json_builder_detach(&json);
 }
 
-void json_append_batch_header(JsonBuilder *json, int total_tasks,
-                              size_t queue_peak_memory, int item_count) {
+void json_append_batch_header(JsonBuilder *json, int total_tasks, size_t queue_peak_memory, int item_count) {
   json_builder_append(json,
                       "{\"queueTasksProcessed\":%d,\"queuePeakMemoryBytes\":%zu,"
                       "\"itemCount\":%d,\"results\":[",
-                      total_tasks, queue_peak_memory, item_count);
+                      total_tasks, 
+                      queue_peak_memory, 
+                      item_count);
 }
 
-void json_append_batch_item(JsonBuilder *json, int index, uint64_t test_id,
-                            const Metrics *metrics) {
+void json_append_batch_item(JsonBuilder *json, int index, uint64_t test_id, const Metrics *metrics) {
   json_builder_append(json,
                       "%s{\"testId\":%llu,\"algorithm\":%d,\"algorithmName\":\"%s\","
                       "\"structure\":%d,\"structureName\":\"%s\","
                       "\"metrics\":{\"itemCount\":%d,\"comparisons\":%lld,"
                       "\"swaps\":%lld,\"elapsedMs\":%.6f,\"memoryBytes\":%zu,"
                       "\"operationCount\":%d}}",
-                      index ? "," : "", (unsigned long long)test_id,
+                      index ? "," : "", 
+                      (unsigned long long) test_id,
                       metrics->algorithm,
                       get_sort_algorithm_name(metrics->algorithm),
                       metrics->structure_type,
                       get_sort_structure_name(metrics->structure_type),
-                      metrics->item_count, (long long)metrics->comparisons,
-                      (long long)metrics->swaps, metrics->elapsed_ms,
-                      metrics->memory_bytes, metrics->operation_count);
+                      metrics->item_count, 
+                      (long long) metrics->comparisons,
+                      (long long) metrics->swaps, 
+                      metrics->elapsed_ms,
+                      metrics->memory_bytes, 
+                      metrics->operation_count);
 }
 
 void json_append_batch_footer(JsonBuilder *json) {

@@ -294,21 +294,23 @@ SequentialList *hash_table_search_by_algorithm(const HashTable *table, const cha
   return results;
 }
 
-const TestReport *hash_table_get_by_id(const HashTable *table,
-                                       uint64_t test_id) {
+const TestReport *hash_table_get_by_id(const HashTable *table, uint64_t test_id) {
   if (table == NULL || test_id == 0) {
     return NULL;
   }
 
   for (size_t i = 0; i < table->bucket_count; i++) {
-    const HashNode *curr = table->buckets[i];
-    while (curr != NULL) {
-      if (curr->report.test_id == test_id) {
-        return &curr->report;
+    const HashNode *current = table->buckets[i];
+
+    while (current != NULL) {
+      if (current->report.test_id == test_id) {
+        return &current->report;
       }
-      curr = curr->next;
+
+      current = current->next;
     }
   }
+
   return NULL;
 }
 
@@ -332,7 +334,7 @@ size_t hash_table_memory_usage(const HashTable *table) {
   if (table == NULL) {
     return 0;
   }
-  
+
   return table->memory_bytes;
 }
 
