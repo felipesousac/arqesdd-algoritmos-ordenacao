@@ -8,11 +8,15 @@ All sorting algorithms, dynamic linear data structures, batch queues, and hash t
 
 ## 1. System Architecture & Directory Layout
 
+The system is a single native binary: a C11 backend (HTTP server, sorting engine, ADTs) that also serves a browser frontend. See [ARCHITECTURE.md](ARCHITECTURE.md) for diagrams and design decisions, and [REQUIREMENTS.md](REQUIREMENTS.md) for the requirements specification.
+
 ```text
 .
 ├── index.html                              # Web UI (Visualizer, Batch Queue & Hash History)
 ├── Makefile                                # Cross-platform GNU Make build configuration
 ├── README.md                               # Project documentation (English)
+├── REQUIREMENTS.md                         # Functional and non-functional requirements
+├── ARCHITECTURE.md                         # Layers, modules, data flow, design decisions
 ├── AI_LOG.md                               # Academic integrity & AI adaptation log
 ├── web/
 │   ├── app.js                              # Frontend controller + JavaScript Stack ADT (Undo/Redo)
@@ -22,28 +26,29 @@ All sorting algorithms, dynamic linear data structures, batch queues, and hash t
 │   └── mongoose.c                          # Mongoose embedded HTTP library implementation
 └── src/
     ├── main.c                              # Minimal application entrypoint
-    ├── server.h                            # Public HTTP server interface
-    ├── server.c                            # HTTP router, JSON serializer, Queue & Hash Table endpoints
-    ├── sort_engine.h                       # Public sorting & benchmarking engine interface
-    ├── sort_engine.c                       # Unified benchmark engine & memory/time instrumentation
-    └── tad/
-        ├── headerFiles/
-        │   ├── sequential_list.h           # Dynamic Contiguous Array ADT (malloc/realloc/free)
-        │   ├── singly_linked_list.h        # Singly Linked List ADT with pointer-based sorting
-        │   ├── doubly_linked_list.h        # Doubly Linked List ADT with bidirectional pointer sorting
-        │   ├── circular_linked_list.h      # Circular Linked List ADT with ring pointer sorting
-        │   ├── queue.h                     # Dynamic Linked Queue ADT for batch processing
-        │   └── hash_table.h                # Dynamic Hash Table ADT (Separate Chaining)
-        └── sourceFiles/
-            ├── sequential_list.c
-            ├── singly_linked_list.c
-            ├── doubly_linked_list.c
-            ├── circular_linked_list.c
-            ├── queue.c
-            └── hash_table.c
+    ├── server.h / server.c                 # HTTP router and endpoint handlers
+    ├── sort_engine.h / sort_engine.c       # Benchmark engine, time/memory metrics, operation log
+    ├── tad/
+    │   ├── headerFiles/                    # Public ADT interfaces (opaque types)
+    │   │   ├── sequential_list.h           # Dynamic contiguous array (malloc/realloc/free)
+    │   │   ├── sequential_list_sort.h      # The 5 sorting algorithms for the array
+    │   │   ├── singly_linked_list.h        # Singly linked list with pointer-based sorting
+    │   │   ├── doubly_linked_list.h        # Doubly linked list with prev/next pointer sorting
+    │   │   ├── circular_linked_list.h      # Circular linked list with ring pointer sorting
+    │   │   ├── list_sort_observer.h        # Callbacks (compare/swap/write) used by every sort
+    │   │   ├── queue.h                     # Dynamic linked queue for batch processing
+    │   │   └── hash_table.h                # Dynamic hash table (separate chaining)
+    │   └── sourceFiles/                    # ADT implementations (.c)
+    └── utils/
+        ├── headerFiles/                    # Helper interfaces
+        │   ├── input_parser.h              # Query parameter parsing and validation
+        │   ├── http_response.h             # JSON/error replies and static file routes
+        │   ├── json_builder.h              # Growable JSON string buffer
+        │   ├── json_serializer.h           # Results, history and batch JSON output
+        │   ├── history_store.h             # Facade over the global hash table
+        │   └── batch_runner.h              # Queue-based batch orchestration
+        └── sourceFiles/                    # Helper implementations (.c)
 ```
-
----
 
 ## 2. Implemented Data Structures (ADTs / TADs)
 
@@ -148,3 +153,26 @@ curl 'http://localhost:8000/api/history?algorithm=Merge%20Sort'
 `GET /api/history/detail?id=<testId>`
 
 Retrieves a specific `TestReport` by `testId` from the C `HashTable` including its full `operations` array so it can be replayed step-by-step in the visualizer.
+
+### 5.5. Clear Stored History
+`DELETE /api/history/clear`
+
+Empties the in-memory `HashTable` and returns the updated `tableStats`. The history is volatile: it is also lost whenever the server stops.
+
+Example:
+```sh
+curl -X DELETE 'http://localhost:8000/api/history/clear'
+```
+
+### 5.6. Errors
+`400` invalid or missing parameters, `404` unknown route or test id, `405` wrong HTTP method, `500` allocation or serialization failure.
+
+---
+
+## 6. Project Documentation
+
+| Document | Content |
+| :--- | :--- |
+| [REQUIREMENTS.md](REQUIREMENTS.md) | Functional and non-functional requirements, constraints, known gaps, traceability to the course description. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Layered design, module reference, sequence diagrams, design decisions, how to extend the system. |
+| [AI_LOG.md](AI_LOG.md) | Main AI prompts and how each answer was adapted or corrected. |
