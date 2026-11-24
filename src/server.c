@@ -1,3 +1,4 @@
+#include "server.h"
 #include "../vendor/mongoose.h"
 #include "sort_engine.h"
 #include "tad/headerFiles/sequential_list.h"
@@ -271,8 +272,8 @@ static void event_handler(struct mg_connection *c, int event, void *event_data) 
   }
 }
 
-int main(int argc, char **argv) {
-  const char *address = argc > 1 ? argv[1] : "http://0.0.0.0:8000";
+int server_run(const char *address) {
+  const char *listen_address = (address && address[0] != '\0') ? address : SERVER_DEFAULT_ADDRESS;
 
   if (!history_store_init()) {
     fprintf(stderr, "Failed to initialize in-memory Hash Table\n");
@@ -282,14 +283,14 @@ int main(int argc, char **argv) {
   struct mg_mgr manager;
   mg_mgr_init(&manager);
 
-  if (!mg_http_listen(&manager, address, event_handler, NULL)) {
-    fprintf(stderr, "Could not start server on %s\n", address);
+  if (!mg_http_listen(&manager, listen_address, event_handler, NULL)) {
+    fprintf(stderr, "Could not start server on %s\n", listen_address);
     mg_mgr_free(&manager);
     history_store_destroy();
     return 1;
   }
 
-  printf("Ordena Server listening on %s\n", address);
+  printf("Ordena Server listening on %s\n", listen_address);
 
   for (;;) {
     mg_mgr_poll(&manager, 1000);

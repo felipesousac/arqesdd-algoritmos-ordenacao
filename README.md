@@ -21,6 +21,8 @@ All sorting algorithms, dynamic linear data structures, batch queues, and hash t
 │   ├── mongoose.h                          # Mongoose embedded HTTP library header
 │   └── mongoose.c                          # Mongoose embedded HTTP library implementation
 └── src/
+    ├── main.c                              # Minimal application entrypoint
+    ├── server.h                            # Public HTTP server interface
     ├── server.c                            # HTTP router, JSON serializer, Queue & Hash Table endpoints
     ├── sort_engine.h                       # Public sorting & benchmarking engine interface
     ├── sort_engine.c                       # Unified benchmark engine & memory/time instrumentation
