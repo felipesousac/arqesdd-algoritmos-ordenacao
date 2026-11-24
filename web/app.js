@@ -721,13 +721,7 @@
 
       element("algorithm").value = String(history.algorithm);
 
-      element("algorithmNote").textContent =
-        algorithmDescriptions[Number(history.algorithm)] || "";
-
       element("structure").value = String(history.structure);
-
-      element("structureNote").textContent =
-        structureDescriptions[Number(history.structure)] || "";
 
       element("sequenceInput").value = (history.input || []).join(", ");
 
