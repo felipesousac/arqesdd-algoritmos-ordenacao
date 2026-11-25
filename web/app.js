@@ -655,8 +655,12 @@
       }
 
       if (data.tableStats) {
+        const bucketLabel =
+          typeof data.tableStats.occupiedBuckets === "number"
+            ? `${data.tableStats.occupiedBuckets}/${data.tableStats.bucketCount} buckets`
+            : `${data.tableStats.bucketCount} buckets`;
         element("hashStatsBadge").textContent =
-          `${data.tableStats.totalTests} testes · ${data.tableStats.bucketCount} buckets · ${formatMemoryBytes(data.tableStats.memoryBytes)}`;
+          `${data.tableStats.totalTests} testes · ${bucketLabel} · ${formatMemoryBytes(data.tableStats.memoryBytes)}`;
       }
 
       renderHistoryTable(data.reports || []);

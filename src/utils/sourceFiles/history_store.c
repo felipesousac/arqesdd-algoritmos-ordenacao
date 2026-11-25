@@ -65,11 +65,12 @@ void history_store_clear(void) {
 }
 
 HistoryStats history_store_stats(void) {
-  HistoryStats stats = {0, 0, 0};
+  HistoryStats stats = {0, 0, 0, 0};
 
   if (g_history_table != NULL) {
     stats.total_tests = hash_table_count(g_history_table);
     stats.bucket_count = hash_table_bucket_count(g_history_table);
+    stats.occupied_buckets = hash_table_occupied_bucket_count(g_history_table);
     stats.memory_bytes = hash_table_memory_usage(g_history_table);
   }
 

@@ -11,6 +11,7 @@ typedef struct hash_node {
 struct hash_table {
   HashNode **buckets;
   size_t bucket_count;
+  size_t occupied_buckets;
   size_t item_count;
   uint64_t next_test_id;
   size_t memory_bytes;
@@ -113,6 +114,7 @@ HashTable *hash_table_create(size_t initial_bucket_count) {
   memset(table->buckets, 0, initial_bucket_count * sizeof(HashNode *));
 
   table->bucket_count = initial_bucket_count;
+  table->occupied_buckets = 0;
   table->item_count = 0;
   table->next_test_id = 1;
   table->memory_bytes =
@@ -139,6 +141,7 @@ static int hash_table_resize(HashTable *table, size_t new_bucket_count) {
     }
     table->buckets[i] = NULL;
   }
+  table->occupied_buckets = 0;
 
   HashNode **resized_buckets = (HashNode **)realloc(
       table->buckets, new_bucket_count * sizeof(HashNode *));
@@ -148,6 +151,9 @@ static int hash_table_resize(HashTable *table, size_t new_bucket_count) {
       HashNode *next = all_nodes->next;
       size_t idx = hash_function(all_nodes->report.algorithm_name,
                                  table->bucket_count);
+      if (table->buckets[idx] == NULL) {
+        table->occupied_buckets++;
+      }
       all_nodes->next = table->buckets[idx];
       table->buckets[idx] = all_nodes;
       all_nodes = next;
@@ -166,6 +172,9 @@ static int hash_table_resize(HashTable *table, size_t new_bucket_count) {
     HashNode *next = all_nodes->next;
     size_t idx =
         hash_function(all_nodes->report.algorithm_name, table->bucket_count);
+    if (table->buckets[idx] == NULL) {
+      table->occupied_buckets++;
+    }
     all_nodes->next = table->buckets[idx];
     table->buckets[idx] = all_nodes;
     all_nodes = next;
@@ -181,11 +190,6 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name, const T
     return 0;
   }
 
-  /* Resize bucket array when load factor exceeds 0.75 */
-  if ((double)(table->item_count + 1) / (double)table->bucket_count > 0.75) {
-    hash_table_resize(table, table->bucket_count * 2 + 1);
-  }
-
   HashNode *node = (HashNode *)malloc(sizeof(HashNode));
 
   if (node == NULL) {
@@ -194,7 +198,6 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name, const T
 
   memset(node, 0, sizeof(HashNode));
 
-  node->report.test_id = table->next_test_id++;
   node->report.algorithm_id = report->algorithm_id;
   node->report.structure_type = report->structure_type;
   node->report.metrics = report->metrics;
@@ -239,9 +242,22 @@ uint64_t hash_table_insert(HashTable *table, const char *algorithm_name, const T
     node->report.metrics.operation_count = 0;
   }
 
+  node->report.test_id = table->next_test_id++;
+
+  /* Resize bucket array only when occupying a new empty bucket exceeds 0.75 */
+  size_t bucket_index = hash_function(algorithm_name, table->bucket_count);
+  if (table->buckets[bucket_index] == NULL &&
+      (double)(table->occupied_buckets + 1) / (double)table->bucket_count > 0.75) {
+    if (hash_table_resize(table, table->bucket_count * 2 + 1)) {
+      bucket_index = hash_function(algorithm_name, table->bucket_count);
+    }
+  }
+
   /* Separate Chaining insertion at the bucket corresponding to algorithm_name
    */
-  size_t bucket_index = hash_function(algorithm_name, table->bucket_count);
+  if (table->buckets[bucket_index] == NULL) {
+    table->occupied_buckets++;
+  }
   node->next = table->buckets[bucket_index];
   table->buckets[bucket_index] = node;
 
@@ -330,6 +346,14 @@ size_t hash_table_bucket_count(const HashTable *table) {
   return table->bucket_count;
 }
 
+size_t hash_table_occupied_bucket_count(const HashTable *table) {
+  if (table == NULL) {
+    return 0;
+  }
+
+  return table->occupied_buckets;
+}
+
 size_t hash_table_memory_usage(const HashTable *table) {
   if (table == NULL) {
     return 0;
@@ -354,6 +378,7 @@ void hash_table_clear(HashTable *table) {
     table->buckets[i] = NULL;
   }
 
+  table->occupied_buckets = 0;
   table->item_count = 0;
   table->next_test_id = 1;
   table->memory_bytes =

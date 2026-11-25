@@ -32,6 +32,7 @@ const TestReport *hash_table_get_by_id(const HashTable *table,
                                        uint64_t test_id);
 size_t hash_table_count(const HashTable *table);
 size_t hash_table_bucket_count(const HashTable *table);
+size_t hash_table_occupied_bucket_count(const HashTable *table);
 size_t hash_table_memory_usage(const HashTable *table);
 void hash_table_clear(HashTable *table);
 void hash_table_destroy(HashTable *table);

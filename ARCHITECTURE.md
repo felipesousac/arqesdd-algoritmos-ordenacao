@@ -96,7 +96,7 @@ All ADTs are **opaque**: the header declares `typedef struct name Name;` and the
 | `hash_table` | `HashTable`, `TestReport` | Dynamic bucket array of linked `HashNode` chains, DJB2 hash on the algorithm name. | Stores every executed test for later lookup. |
 | `list_sort_observer` | `ListSortObserver` | Struct of callbacks: `on_compare`, `on_swap`, `on_write`. | Decouples the sorting code from metrics and logging (see 6.1). |
 
-**Hash table details.** The initial size is 11 buckets. Before an insert, if `(count + 1) / buckets > 0.75`, the bucket array is grown to `2n + 1` with `realloc` and every node is rehashed. Each insert stores a **deep copy** of the report (input, sorted values and operations are copied), so the engine can free its own buffers right after recording. Test IDs are sequential, starting at 1.
+**Hash table details.** The initial size is 11 buckets. Before inserting into an empty bucket, if `(occupied_buckets + 1) / buckets > 0.75`, the bucket array is grown to `2n + 1` with `realloc` and every node is rehashed. Each insert stores a **deep copy** of the report (input, sorted values and operations are copied), so the engine can free its own buffers right after recording. Test IDs are sequential, starting at 1.
 
 ### 4.2 Engine (`src/sort_engine.*`)
 

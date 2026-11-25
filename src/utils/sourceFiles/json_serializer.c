@@ -86,9 +86,10 @@ char *json_serialize_history(const HistoryStats *stats, const SequentialList *re
 
   json_builder_append(&json,
                       "{\"tableStats\":{\"totalTests\":%zu,\"bucketCount\":%zu,"
-                      "\"memoryBytes\":%zu},\"reports\":[",
+                      "\"occupiedBuckets\":%zu,\"memoryBytes\":%zu},\"reports\":[",
                       stats->total_tests, 
                       stats->bucket_count,
+                      stats->occupied_buckets,
                       stats->memory_bytes);
 
   for (int i = 0; i < seq_list_size(reports); i++) {
@@ -131,9 +132,10 @@ char *json_serialize_history_clear(const HistoryStats *stats) {
 
   json_builder_append(&json,
                       "{\"cleared\":true,\"tableStats\":{\"totalTests\":%zu,"
-                      "\"bucketCount\":%zu,\"memoryBytes\":%zu}}\n",
+                      "\"bucketCount\":%zu,\"occupiedBuckets\":%zu,\"memoryBytes\":%zu}}\n",
                       stats->total_tests, 
                       stats->bucket_count,
+                      stats->occupied_buckets,
                       stats->memory_bytes);
 
   return json_builder_detach(&json);

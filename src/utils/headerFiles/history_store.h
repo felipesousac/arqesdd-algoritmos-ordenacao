@@ -10,6 +10,7 @@
 typedef struct {
   size_t total_tests;
   size_t bucket_count;
+  size_t occupied_buckets;
   size_t memory_bytes;
 } HistoryStats;
 
