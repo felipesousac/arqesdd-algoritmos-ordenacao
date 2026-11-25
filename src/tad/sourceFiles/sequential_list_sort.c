@@ -6,7 +6,7 @@ static inline void emit_compare(const ListSortObserver *obs, int first_index,
                                 int second_index, int32_t first_value,
                                 int32_t second_value) {
   if (obs != NULL && obs->on_compare != NULL) {
-    obs->on_compare(first_index, second_index, first_value, second_value, obs->context);
+    obs->on_compare(first_index, second_index, first_value, second_value);
   }
 }
 
@@ -14,14 +14,14 @@ static inline void emit_swap(const ListSortObserver *obs, int first_index,
                              int second_index, int32_t new_first_value,
                              int32_t new_second_value) {
   if (obs != NULL && obs->on_swap != NULL) {
-    obs->on_swap(first_index, second_index, new_first_value, new_second_value, obs->context);
+    obs->on_swap(first_index, second_index, new_first_value, new_second_value);
   }
 }
 
 static inline void emit_write(const ListSortObserver *obs, int index,
                               int32_t value, int count_as_swap) {
   if (obs != NULL && obs->on_write != NULL) {
-    obs->on_write(index, value, count_as_swap, obs->context);
+    obs->on_write(index, value, count_as_swap);
   }
 }
 

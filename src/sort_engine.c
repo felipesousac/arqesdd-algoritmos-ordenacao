@@ -74,26 +74,19 @@ static int reset_operation_history(int requested_limit) {
 
 /* Observer callbacks for linked list TADs -------------------------------- */
 static void observer_on_compare(int first_index, int second_index,
-                                int32_t first_value, int32_t second_value,
-                                void *context) {
-  (void) context;
-
+                                int32_t first_value, int32_t second_value) {
   metrics.comparisons++;
 
   record_operation(OPERATION_COMPARE, first_index, second_index, first_value, second_value);
 }
 
-static void observer_on_swap(int first_index, int second_index, int32_t new_first_value, int32_t new_second_value, void *context) {
-  (void) context;
-
+static void observer_on_swap(int first_index, int second_index, int32_t new_first_value, int32_t new_second_value) {
   metrics.swaps++;
 
   record_operation(OPERATION_SWAP, first_index, second_index, new_first_value, new_second_value);
 }
 
-static void observer_on_write(int index, int32_t value, int count_as_swap, void *context) {
-  (void) context;
-
+static void observer_on_write(int index, int32_t value, int count_as_swap) {
   if (count_as_swap) {
     metrics.swaps++;
   }
@@ -250,8 +243,7 @@ int sort_run(const int32_t *input, int item_count, int algorithm, int structure_
 
   ListSortObserver observer = {.on_compare = observer_on_compare,
                                .on_swap = observer_on_swap,
-                               .on_write = observer_on_write,
-                               .context = NULL};
+                               .on_write = observer_on_write};
 
   int ok = 0;
 

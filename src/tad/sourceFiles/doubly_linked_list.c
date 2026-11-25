@@ -273,21 +273,21 @@ void doubly_list_destroy(DoublyLinkedList *list) {
 static inline void emit_compare(const ListSortObserver *obs, int i, int j,
                                 int32_t vi, int32_t vj) {
   if (obs != NULL && obs->on_compare != NULL) {
-    obs->on_compare(i, j, vi, vj, obs->context);
+    obs->on_compare(i, j, vi, vj);
   }
 }
 
 static inline void emit_swap(const ListSortObserver *obs, int i, int j,
                              int32_t new_vi, int32_t new_vj) {
   if (obs != NULL && obs->on_swap != NULL) {
-    obs->on_swap(i, j, new_vi, new_vj, obs->context);
+    obs->on_swap(i, j, new_vi, new_vj);
   }
 }
 
 static inline void emit_write(const ListSortObserver *obs, int idx, int32_t val,
                               int count_as_swap) {
   if (obs != NULL && obs->on_write != NULL) {
-    obs->on_write(idx, val, count_as_swap, obs->context);
+    obs->on_write(idx, val, count_as_swap);
   }
 }
 
