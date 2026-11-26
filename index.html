@@ -62,13 +62,13 @@
               class="number-input"
               type="number"
               min="2"
-              max="128"
+              max="300"
               step="1"
               value="9"
               inputmode="numeric"
             />
             <p class="input-hint">
-              Informe de 2 a 128 números para gerar uma sequência.
+              Informe de 2 a 300 números para gerar uma sequência.
             </p>
           </div>
 
@@ -92,8 +92,11 @@
             <div
               class="sequence-presets"
               role="group"
-              aria-label="Gerar sequência ordenada"
+              aria-label="Gerar sequência com base na quantidade"
             >
+              <button class="apply-button" id="randomSequence" type="button">
+                Gerar aleatórios
+              </button>
               <button class="apply-button" id="ascendingSequence" type="button">
                 Gerar 1 → n
               </button>

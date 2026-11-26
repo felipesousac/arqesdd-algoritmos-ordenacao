@@ -731,6 +731,7 @@ footer {
   border-color: var(--cyan);
 }
 
+#sequenceCount[aria-invalid="true"],
 #sequenceInput[aria-invalid="true"] {
   border-color: #ff806d;
 }
@@ -774,6 +775,15 @@ footer {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 7px;
+  margin-top: 8px;
+}
+
+.sequence-presets .apply-button {
+  margin-top: 0;
+}
+
+#randomSequence {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 1024px) {

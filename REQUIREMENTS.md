@@ -30,8 +30,8 @@ Ordena is a laboratory for comparing sorting algorithms over linear data structu
 | :--- | :--- | :---: |
 | FR-01 | The system shall let the user choose one of five algorithms: Bubble, Selection, Insertion, Quick and Merge Sort. | Done |
 | FR-02 | The system shall let the user choose one of four linear structures to sort: Sequential List (dynamic array), Singly Linked List, Doubly Linked List and Circular Linked List. | Done |
-| FR-03 | The system shall accept an input sequence of 2 to 128 positive integers (`1..1000000`) separated by comma, space or semicolon, and shall reject invalid input with a clear error. | Done |
-| FR-04 | The system shall provide helpers to generate input: random shuffle, ascending sequence and descending sequence. | Done |
+| FR-03 | The system shall accept an input sequence of 2 to 300 positive integers (`1..1000000`) separated by comma, space or semicolon, and shall reject invalid input with a clear error. | Done |
+| FR-04 | The system shall provide helpers to generate input: random integer sequence, ascending sequence and descending sequence. | Done |
 | FR-05 | The system shall sort linked lists by relinking node pointers (`next`/`prev`), not by copying values into an array. | Done |
 | FR-06 | The system shall record every compare, swap and write operation of an execution so it can be replayed. | Done |
 
@@ -97,7 +97,7 @@ Error conventions: `400` invalid or missing parameters, `404` unknown route or t
 | NFR-01 | Memory | All data structures, buffers and histories shall use dynamic allocation (`malloc`, `realloc`, `free`). No fixed-size global arrays for user data. | Done |
 | NFR-02 | Encapsulation | Every ADT shall be an opaque type: the `struct` is defined in the `.c` file and only a `typedef` is exposed in the `.h` file. | Done |
 | NFR-03 | Robustness | Every allocation shall be checked for `NULL` and failures shall be reported to the caller (HTTP `500`) instead of crashing. | Done |
-| NFR-04 | Limits | Input is limited to 128 values; a single run records at most 2,000,000 operations; a JSON response is limited to 32 MB. | Done |
+| NFR-04 | Limits | Input is limited to 300 values; a single run records at most 2,000,000 operations; a JSON response is limited to 32 MB. | Done |
 | NFR-05 | Portability | The project shall build with `gcc`/`clang` (C11) and GNU Make on Linux, macOS and Windows. | Done |
 | NFR-06 | Code quality | The code shall compile with `-Wall -Wextra` without warnings. | Done |
 | NFR-07 | Language | All code identifiers, code comments and `README.md` shall be written in English. | Done |

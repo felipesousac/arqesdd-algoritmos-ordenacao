@@ -4,7 +4,7 @@
 #include "../../tad/headerFiles/sequential_list.h"
 #include <stdint.h>
 
-#define API_MAX_INPUT 128
+#define API_MAX_INPUT 300
 
 int parse_values_dynamic(const char *text, int32_t **out_values,
                          int *out_count);

@@ -137,6 +137,8 @@
   }
 
   // Input parsing and sequence setup -------------------------------------
+  const MAX_SEQUENCE_ITEMS = 300;
+
   function readSequenceFromInput() {
     const rawInput = element("sequenceInput").value.trim();
     const tokens = rawInput ? rawInput.split(/[\s,;]+/).filter(Boolean) : [];
@@ -146,8 +148,8 @@
 
     if (values.length < 2) {
       errorMessage = "Informe pelo menos 2 valores.";
-    } else if (values.length > 128) {
-      errorMessage = "O limite é de 128 valores para manter a animação fluida.";
+    } else if (values.length > MAX_SEQUENCE_ITEMS) {
+      errorMessage = `O limite é de ${MAX_SEQUENCE_ITEMS} valores para manter a animação fluida.`;
     } else if (
       values.some(
         (value) => !Number.isSafeInteger(value) || value < 1 || value > 1000000,
@@ -158,6 +160,7 @@
 
     element("sequenceError").textContent = errorMessage;
     element("sequenceError").hidden = !errorMessage;
+    element("sequenceCount").setAttribute("aria-invalid", "false");
     element("sequenceInput").setAttribute(
       "aria-invalid",
       String(Boolean(errorMessage)),
@@ -177,23 +180,54 @@
     resetVisualization();
   }
 
-  function applyOrderedSequence(direction) {
+  function readSequenceCount() {
     const itemCount = Number(element("sequenceCount").value);
 
     const errorMessage =
-      !Number.isInteger(itemCount) || itemCount < 2 || itemCount > 128
-        ? "Informe uma quantidade inteira entre 2 e 128."
+      !Number.isInteger(itemCount) ||
+      itemCount < 2 ||
+      itemCount > MAX_SEQUENCE_ITEMS
+        ? `Informe uma quantidade inteira entre 2 e ${MAX_SEQUENCE_ITEMS}.`
         : "";
 
     element("sequenceError").textContent = errorMessage;
     element("sequenceError").hidden = !errorMessage;
+    element("sequenceCount").setAttribute(
+      "aria-invalid",
+      String(Boolean(errorMessage)),
+    );
 
-    if (errorMessage) {
+    return errorMessage ? null : itemCount;
+  }
+
+  function applyOrderedSequence(direction) {
+    const itemCount = readSequenceCount();
+
+    if (!itemCount) {
       return;
     }
 
     const values = Array.from({ length: itemCount }, (_, index) =>
       direction > 0 ? index + 1 : itemCount - index,
+    );
+
+    element("sequenceInput").value = values.join(", ");
+    element("sequenceInput").setAttribute("aria-invalid", "false");
+    initialValues = values;
+    resetVisualization();
+  }
+
+  function applyRandomSequence() {
+    const itemCount = readSequenceCount();
+
+    if (!itemCount) {
+      return;
+    }
+
+    const maxValue = Math.max(100, itemCount);
+    const values = Array.from(
+      { length: itemCount },
+      () => Math.floor(Math.random() * maxValue) + 1,
     );
 
     element("sequenceInput").value = values.join(", ");
@@ -469,10 +503,11 @@
       return;
     }
 
-    const gap = displayedValues.length > 90 ? 1 : 2;
+    const slotWidth = bounds.width / displayedValues.length;
+    const gap = slotWidth >= 8 ? 2 : slotWidth >= 2.2 ? 1 : 0;
 
     const barWidth = Math.max(
-      1,
+      0.5,
       (bounds.width - gap * (displayedValues.length - 1)) /
         displayedValues.length,
     );
@@ -783,6 +818,7 @@
   // User interface event handlers ----------------------------------------
   element("sortButton").addEventListener("click", startSorting);
   element("applySequence").addEventListener("click", applySequence);
+  element("randomSequence").addEventListener("click", applyRandomSequence);
   element("ascendingSequence").addEventListener("click", () =>
     applyOrderedSequence(1),
   );

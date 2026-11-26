@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX_QUERY 4096
+#define MAX_QUERY 8192
 #define SORT_OPERATION_LIMIT 2000000
 
 static void handle_api_sort(struct mg_connection *c, struct mg_http_message *request) {

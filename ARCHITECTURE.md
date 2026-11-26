@@ -121,7 +121,7 @@ The engine keeps its current result in module-level state. The caller must call 
 
 | Module | Responsibility |
 | :--- | :--- |
-| `input_parser` | Parses `values` (dynamic `int32_t` array, 1..1000000, at most 128), id lists and ranges, test IDs, and maps the `algorithm` filter to a lookup key. |
+| `input_parser` | Parses `values` (dynamic `int32_t` array, 1..1000000, at most 300), id lists and ranges, test IDs, and maps the `algorithm` filter to a lookup key. |
 | `http_response` | JSON and error replies, HTTP method check, static file routes (`/`, `/index.html`, `/web/app.js`, `/web/style.css`). |
 | `json_builder` | Growable string buffer for building JSON incrementally (limit 32 MB). |
 | `json_serializer` | Turns results, history and batch rows into JSON using `json_builder`. |
@@ -217,7 +217,7 @@ The stack lives in JavaScript because undo/redo is a property of playback, which
 
 - Every allocation is checked. Failures propagate as return codes (`BatchStatus`, `0` from `sort_run`, `NULL` from constructors) and become HTTP `500`.
 - Invalid or missing parameters become `400`, wrong methods `405`, unknown IDs `404`.
-- Limits: 128 input values at the API, 4096 values in the engine, 2,000,000 recorded operations per run, 32 MB per JSON response.
+- Limits: 300 input values at the API, 4096 values in the engine, 2,000,000 recorded operations per run, 32 MB per JSON response.
 
 ## 8. Build and Run
 

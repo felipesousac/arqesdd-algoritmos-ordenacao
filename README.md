@@ -122,7 +122,7 @@ make clean
 Executes the selected sorting algorithm on the chosen linear structure, stores the complete report in the in-memory **Hash Table**, and returns the execution trace.
 - `algorithm`: `0` Bubble, `1` Selection, `2` Insertion, `3` Quick, `4` Merge
 - `structure`: `0` Sequential List, `1` Singly Linked List, `2` Doubly Linked List, `3` Circular Linked List (defaults to `0` if omitted)
-- `values`: 2 to 128 positive integers (`1..1000000`) separated by comma, space, or semicolon
+- `values`: 2 to 300 positive integers (`1..1000000`) separated by comma, space, or semicolon
 
 Example:
 ```sh
