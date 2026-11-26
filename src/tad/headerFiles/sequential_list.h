@@ -22,7 +22,6 @@ void *seq_list_data(const SequentialList *list);
 int seq_list_size(const SequentialList *list);
 int seq_list_capacity(const SequentialList *list);
 size_t seq_list_element_size(const SequentialList *list);
-int seq_list_is_full(const SequentialList *list);
 int seq_list_is_empty(const SequentialList *list);
 size_t seq_list_memory_usage(const SequentialList *list);
 void seq_list_clear(SequentialList *list);

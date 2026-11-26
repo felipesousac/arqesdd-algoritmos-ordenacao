@@ -358,19 +358,26 @@ static void circular_bubble_sort(CircularLinkedList *list, const ListSortObserve
         int32_t second_val = next_node->data;
 
         /* Relink adjacent nodes in circular ring */
-        curr->next = next_node->next;
-        next_node->next = curr;
-        prev->next = next_node;
-
-        if (index == 0) {
+        if (list->size == 2) {
           list->head = next_node;
-        }
-
-        if (index == list->size - 2) {
           list->tail = curr;
-        }
+          next_node->next = curr;
+          curr->next = next_node;
+        } else {
+          curr->next = next_node->next;
+          next_node->next = curr;
+          prev->next = next_node;
 
-        list->tail->next = list->head;
+          if (index == 0) {
+            list->head = next_node;
+          }
+
+          if (index == list->size - 2) {
+            list->tail = curr;
+          }
+
+          list->tail->next = list->head;
+        }
 
         emit_swap(obs, index, index + 1, second_val, first_val);
 
@@ -421,77 +428,79 @@ static void circular_insertion_sort(CircularLinkedList *list, const ListSortObse
     CircularNode *curr = last_sorted->next;
     int32_t value_to_insert = curr->data;
 
-    int previous_position = position - 1;
+    /* Fast check against end of sorted prefix for O(n) best case */
+    emit_compare(obs, position - 1, position, last_sorted->data, value_to_insert);
 
-    while (previous_position >= 0) {
-      CircularNode *prev_node = list->head;
+    if (last_sorted->data <= value_to_insert) {
+      last_sorted = curr;
+      continue;
+    }
 
-      for (int i = 0; i < previous_position; i++) {
-        prev_node = prev_node->next;
-      }
+    /* Traverse forward from head in O(position) to find insertion point */
+    CircularNode *ins_prev = NULL;
+    CircularNode *scan = list->head;
+    int target_index = 0;
 
-      emit_compare(obs, previous_position, position, prev_node->data, value_to_insert);
-      
-      if (prev_node->data <= value_to_insert) {
+    while (target_index < position - 1) {
+      emit_compare(obs, target_index, position, scan->data, value_to_insert);
+
+      if (value_to_insert < scan->data) {
         break;
       }
 
-      emit_write(obs, previous_position + 1, prev_node->data, 1);
-
-      previous_position--;
+      ins_prev = scan;
+      scan = scan->next;
+      target_index++;
     }
 
-    int target_index = previous_position + 1;
+    /* Detach curr from after last_sorted */
+    last_sorted->next = curr->next;
 
-    if (target_index != position) {
-      /* Detach curr from after last_sorted */
-      last_sorted->next = curr->next;
+    if (curr == list->tail) {
+      list->tail = last_sorted;
+    }
 
-      if (curr == list->tail) {
-        list->tail = last_sorted;
-      }
-
-      if (target_index == 0) {
-        curr->next = list->head;
-        list->head = curr;
-        list->tail->next = list->head;
-      } else {
-        CircularNode *ins_prev = list->head;
-
-        for (int i = 0; i < target_index - 1; i++) {
-          ins_prev = ins_prev->next;
-        }
-
-        curr->next = ins_prev->next;
-        ins_prev->next = curr;
-      }
-
-      list->tail->next = list->head;
-
-      emit_write(obs, target_index, value_to_insert, 0);
+    if (ins_prev == NULL) {
+      curr->next = list->head;
+      list->head = curr;
     } else {
-      last_sorted = curr;
+      curr->next = ins_prev->next;
+      ins_prev->next = curr;
+    }
+
+    list->tail->next = list->head;
+
+    /* Count 1 swap for the node insertion, then sync shifted bar positions */
+    emit_write(obs, target_index, value_to_insert, 1);
+
+    CircularNode *sync = curr->next;
+    
+    for (int idx = target_index + 1; idx <= position; idx++) {
+      emit_write(obs, idx, sync->data, 0);
+      sync = sync->next;
     }
   }
 }
 
 static int circular_partition(CircularLinkedList *list, int low, int high, const ListSortObserver *obs) {
-  CircularNode *high_node = list->head;
+  CircularNode *low_node = list->head;
 
-  for (int i = 0; i < high; i++) {
+  for (int i = 0; i < low; i++) {
+    low_node = low_node->next;
+  }
+
+  CircularNode *high_node = low_node;
+
+  for (int i = low; i < high; i++) {
     high_node = high_node->next;
   }
 
   int32_t pivot_value = high_node->data;
-
   int last_smaller_index = low - 1;
+  CircularNode *scan_node = low_node;
 
   for (int scan_index = low; scan_index < high; scan_index++) {
-    CircularNode *scan_node = list->head;
-
-    for (int i = 0; i < scan_index; i++) {
-      scan_node = scan_node->next;
-    }
+    CircularNode *next_scan = scan_node->next;
 
     emit_compare(obs, scan_index, high, scan_node->data, pivot_value);
 
@@ -499,6 +508,8 @@ static int circular_partition(CircularLinkedList *list, int low, int high, const
       last_smaller_index++;
       circular_swap_nodes_by_index(list, last_smaller_index, scan_index, obs);
     }
+
+    scan_node = next_scan;
   }
 
   int pivot_index = last_smaller_index + 1;
@@ -544,6 +555,8 @@ static CircularNode *circular_merge_sort_nodes(CircularNode *head, int low, int 
 
   int left_index = low;
   int right_index = middle + 1;
+  int output_index = low;
+  int first_moved_idx = -1;
 
   CircularNode *left_curr = left_sorted;
   CircularNode *right_curr = right_sorted;
@@ -556,25 +569,36 @@ static CircularNode *circular_merge_sort_nodes(CircularNode *head, int low, int 
       left_curr = left_curr->next;
       left_index++;
     } else {
+      if (first_moved_idx == -1) {
+        first_moved_idx = output_index;
+      }
       tail->next = right_curr;
       right_curr = right_curr->next;
       right_index++;
     }
 
+    output_index++;
     tail = tail->next;
   }
 
   if (left_curr != NULL) {
     tail->next = left_curr;
+    output_index = high + 1;
   } else {
     tail->next = right_curr;
   }
 
-  CircularNode *scan = temp_head.next;
+  if (first_moved_idx != -1) {
+    CircularNode *scan = temp_head.next;
 
-  for (int idx = low; idx <= high && scan != NULL; idx++) {
-    emit_write(obs, idx, scan->data, 1);
-    scan = scan->next;
+    for (int idx = low; idx < first_moved_idx && scan != NULL; idx++) {
+      scan = scan->next;
+    }
+
+    for (int idx = first_moved_idx; idx < output_index && scan != NULL; idx++) {
+      emit_write(obs, idx, scan->data, 1);
+      scan = scan->next;
+    }
   }
 
   return temp_head.next;
@@ -600,7 +624,8 @@ static void circular_merge_sort(CircularLinkedList *list, const ListSortObserver
 }
 
 int circular_list_sort(CircularLinkedList *list, int algorithm, const ListSortObserver *observer) {
-  if (list == NULL || list->size < 1 || algorithm < 0 || algorithm > 4) {
+  if (list == NULL || list->size < 1 || algorithm < ALGORITHM_BUBBLE ||
+      algorithm > ALGORITHM_MERGE) {
     return 0;
   }
 
@@ -609,19 +634,19 @@ int circular_list_sort(CircularLinkedList *list, int algorithm, const ListSortOb
   }
 
   switch (algorithm) {
-    case 0:
+    case ALGORITHM_BUBBLE:
       circular_bubble_sort(list, observer);
       break;
-    case 1:
+    case ALGORITHM_SELECTION:
       circular_selection_sort(list, observer);
       break;
-    case 2:
+    case ALGORITHM_INSERTION:
       circular_insertion_sort(list, observer);
       break;
-    case 3:
+    case ALGORITHM_QUICK:
       circular_quick_sort_range(list, 0, list->size - 1, observer);
       break;
-    case 4:
+    case ALGORITHM_MERGE:
       circular_merge_sort(list, observer);
       break;
     default:

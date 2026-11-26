@@ -18,6 +18,10 @@ SequentialList *seq_list_create_with_capacity(size_t element_size, int initial_c
     initial_capacity = SEQ_LIST_INITIAL_CAPACITY;
   }
 
+  if ((size_t)initial_capacity > (size_t)-1 / element_size) {
+    return NULL;
+  }
+
   SequentialList *list = (SequentialList *) malloc(sizeof(SequentialList));
 
   if (list == NULL) {
@@ -213,13 +217,6 @@ size_t seq_list_element_size(const SequentialList *list) {
     return 0;
   }
   return list->element_size;
-}
-
-int seq_list_is_full(const SequentialList *list) {
-  if (list == NULL) {
-    return -1;
-  }
-  return 0;
 }
 
 int seq_list_is_empty(const SequentialList *list) {

@@ -150,12 +150,24 @@ static int run_singly_list_sort(const int32_t *input, int item_count, int algori
 
   double start_ms = current_time_ms();
 
-  singly_list_sort(list, algorithm, observer);
+  int ok = singly_list_sort(list, algorithm, observer);
 
   metrics.elapsed_ms = current_time_ms() - start_ms;
+
+  if (!ok) {
+    singly_list_destroy(list);
+
+    return 0;
+  }
+
   metrics.memory_bytes = singly_list_memory_usage(list);
 
-  singly_list_to_array(list, sorted_values_buffer, item_count);
+  if (singly_list_to_array(list, sorted_values_buffer, item_count) != item_count) {
+    singly_list_destroy(list);
+
+    return 0;
+  }
+
   singly_list_destroy(list);
 
   return 1;
@@ -176,12 +188,24 @@ static int run_doubly_list_sort(const int32_t *input, int item_count, int algori
 
   double start_ms = current_time_ms();
 
-  doubly_list_sort(list, algorithm, observer);
+  int ok = doubly_list_sort(list, algorithm, observer);
 
   metrics.elapsed_ms = current_time_ms() - start_ms;
+
+  if (!ok) {
+    doubly_list_destroy(list);
+
+    return 0;
+  }
+
   metrics.memory_bytes = doubly_list_memory_usage(list);
 
-  doubly_list_to_array(list, sorted_values_buffer, item_count);
+  if (doubly_list_to_array(list, sorted_values_buffer, item_count) != item_count) {
+    doubly_list_destroy(list);
+
+    return 0;
+  }
+
   doubly_list_destroy(list);
 
   return 1;
@@ -202,12 +226,24 @@ static int run_circular_list_sort(const int32_t *input, int item_count, int algo
 
   double start_ms = current_time_ms();
 
-  circular_list_sort(list, algorithm, observer);
+  int ok = circular_list_sort(list, algorithm, observer);
 
   metrics.elapsed_ms = current_time_ms() - start_ms;
+
+  if (!ok) {
+    circular_list_destroy(list);
+
+    return 0;
+  }
+
   metrics.memory_bytes = circular_list_memory_usage(list);
 
-  circular_list_to_array(list, sorted_values_buffer, item_count);
+  if (circular_list_to_array(list, sorted_values_buffer, item_count) != item_count) {
+    circular_list_destroy(list);
+
+    return 0;
+  }
+
   circular_list_destroy(list);
 
   return 1;

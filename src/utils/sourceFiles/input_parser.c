@@ -178,7 +178,8 @@ const char *resolve_algorithm_filter(const char *algorithm_filter) {
     return "";
   }
 
-  if (algorithm_filter[0] >= '0' && algorithm_filter[0] <= '4' &&
+  if (algorithm_filter[0] >= ('0' + ALGORITHM_BUBBLE) &&
+      algorithm_filter[0] <= ('0' + ALGORITHM_MERGE) &&
       algorithm_filter[1] == '\0') {
     return get_sort_algorithm_name(algorithm_filter[0] - '0');
   }

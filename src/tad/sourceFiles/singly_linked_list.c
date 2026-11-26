@@ -406,74 +406,77 @@ static void singly_insertion_sort(SinglyLinkedList *list, const ListSortObserver
     SinglyNode *curr = last_sorted->next;
     int32_t value_to_insert = curr->data;
 
-    /* Find preceding nodes in sorted prefix to emit exact comparisons */
-    int previous_position = position - 1;
+    /* Fast check against end of sorted prefix for O(n) best case */
+    emit_compare(obs, position - 1, position, last_sorted->data, value_to_insert);
 
-    while (previous_position >= 0) {
-      SinglyNode *prev_node = list->head;
+    if (last_sorted->data <= value_to_insert) {
+      last_sorted = curr;
+      continue;
+    }
 
-      for (int i = 0; i < previous_position; i++) {
-        prev_node = prev_node->next;
-      }
+    /* Traverse forward from head in O(position) to find insertion point */
+    SinglyNode *ins_prev = NULL;
+    SinglyNode *scan = list->head;
+    int target_index = 0;
 
-      emit_compare(obs, previous_position, position, prev_node->data, value_to_insert);
-      
-      if (prev_node->data <= value_to_insert) {
+    while (target_index < position - 1) {
+      emit_compare(obs, target_index, position, scan->data, value_to_insert);
+
+      if (value_to_insert < scan->data) {
         break;
       }
 
-      emit_write(obs, previous_position + 1, prev_node->data, 1);
-      previous_position--;
+      ins_prev = scan;
+      scan = scan->next;
+      target_index++;
     }
 
-    int target_index = previous_position + 1;
+    /* Detach curr from after last_sorted and re-insert at target_index via
+     * pointers */
+    last_sorted->next = curr->next;
 
-    if (target_index != position) {
-      /* Detach curr from after last_sorted and re-insert at target_index via
-       * pointers */
-      last_sorted->next = curr->next;
+    if (curr == list->tail) {
+      list->tail = last_sorted;
+    }
 
-      if (curr == list->tail) {
-        list->tail = last_sorted;
-      }
-
-      if (target_index == 0) {
-        curr->next = list->head;
-        list->head = curr;
-      } else {
-        SinglyNode *ins_prev = list->head;
-
-        for (int i = 0; i < target_index - 1; i++) {
-          ins_prev = ins_prev->next;
-        }
-
-        curr->next = ins_prev->next;
-        ins_prev->next = curr;
-      }
-
-      emit_write(obs, target_index, value_to_insert, 0);
+    if (ins_prev == NULL) {
+      curr->next = list->head;
+      list->head = curr;
     } else {
-      last_sorted = curr;
+      curr->next = ins_prev->next;
+      ins_prev->next = curr;
+    }
+
+    /* Count 1 swap for the node insertion, then sync shifted bar positions */
+    emit_write(obs, target_index, value_to_insert, 1);
+
+    SinglyNode *sync = curr->next;
+    for (int idx = target_index + 1; idx <= position && sync != NULL; idx++) {
+      emit_write(obs, idx, sync->data, 0);
+      sync = sync->next;
     }
   }
 }
 
 static int singly_partition(SinglyLinkedList *list, int low, int high, const ListSortObserver *obs) {
-  SinglyNode *high_node = list->head;
+  SinglyNode *low_node = list->head;
 
-  for (int i = 0; i < high; i++) {
+  for (int i = 0; i < low; i++) {
+    low_node = low_node->next;
+  }
+
+  SinglyNode *high_node = low_node;
+
+  for (int i = low; i < high; i++) {
     high_node = high_node->next;
   }
 
   int32_t pivot_value = high_node->data;
   int last_smaller_index = low - 1;
+  SinglyNode *scan_node = low_node;
 
   for (int scan_index = low; scan_index < high; scan_index++) {
-    SinglyNode *scan_node = list->head;
-
-    for (int i = 0; i < scan_index; i++) {
-      scan_node = scan_node->next;
-    }
+    SinglyNode *next_scan = scan_node->next;
 
     emit_compare(obs, scan_index, high, scan_node->data, pivot_value);
 
@@ -481,6 +484,8 @@ static int singly_partition(SinglyLinkedList *list, int low, int high, const Lis
       last_smaller_index++;
       singly_swap_nodes_by_index(list, last_smaller_index, scan_index, obs);
     }
+
+    scan_node = next_scan;
   }
 
   int pivot_index = last_smaller_index + 1;
@@ -527,6 +532,8 @@ static SinglyNode *singly_merge_sort_nodes(SinglyNode *head, int low, int high, 
 
   int left_index = low;
   int right_index = middle + 1;
+  int output_index = low;
+  int first_moved_idx = -1;
 
   SinglyNode *left_curr = left_sorted;
   SinglyNode *right_curr = right_sorted;
@@ -540,26 +547,37 @@ static SinglyNode *singly_merge_sort_nodes(SinglyNode *head, int low, int high, 
 
       left_index++;
     } else {
+      if (first_moved_idx == -1) {
+        first_moved_idx = output_index;
+      }
       tail->next = right_curr;
       right_curr = right_curr->next;
 
       right_index++;
     }
 
+    output_index++;
     tail = tail->next;
   }
 
   if (left_curr != NULL) {
     tail->next = left_curr;
+    output_index = high + 1;
   } else {
     tail->next = right_curr;
   }
 
-  SinglyNode *scan = temp_head.next;
+  if (first_moved_idx != -1) {
+    SinglyNode *scan = temp_head.next;
 
-  for (int idx = low; idx <= high && scan != NULL; idx++) {
-    emit_write(obs, idx, scan->data, 1);
-    scan = scan->next;
+    for (int idx = low; idx < first_moved_idx && scan != NULL; idx++) {
+      scan = scan->next;
+    }
+
+    for (int idx = first_moved_idx; idx < output_index && scan != NULL; idx++) {
+      emit_write(obs, idx, scan->data, 1);
+      scan = scan->next;
+    }
   }
 
   return temp_head.next;
@@ -578,7 +596,8 @@ static void singly_merge_sort(SinglyLinkedList *list, const ListSortObserver *ob
 }
 
 int singly_list_sort(SinglyLinkedList *list, int algorithm, const ListSortObserver *observer) {
-  if (list == NULL || list->size < 1) {
+  if (list == NULL || list->size < 1 || algorithm < ALGORITHM_BUBBLE ||
+      algorithm > ALGORITHM_MERGE) {
     return 0;
   }
 
@@ -587,19 +606,19 @@ int singly_list_sort(SinglyLinkedList *list, int algorithm, const ListSortObserv
   }
 
   switch (algorithm) {
-    case 0:
+    case ALGORITHM_BUBBLE:
       singly_bubble_sort(list, observer);
       break;
-    case 1:
+    case ALGORITHM_SELECTION:
       singly_selection_sort(list, observer);
       break;
-    case 2:
+    case ALGORITHM_INSERTION:
       singly_insertion_sort(list, observer);
       break;
-    case 3:
+    case ALGORITHM_QUICK:
       singly_quick_sort_range(list, 0, list->size - 1, observer);
       break;
-    case 4:
+    case ALGORITHM_MERGE:
       singly_merge_sort(list, observer);
       break;
     default:

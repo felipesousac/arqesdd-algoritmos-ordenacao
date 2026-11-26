@@ -104,7 +104,7 @@ static void seq_insertion_sort(SequentialList *list, const ListSortObserver *obs
     while (previous_position >= 0) {
       int32_t prev_val = seq_val_at(list, previous_position);
 
-      emit_compare(obs, previous_position, position, prev_val, value_to_insert);
+      emit_compare(obs, previous_position, previous_position + 1, prev_val, value_to_insert);
 
       if (prev_val <= value_to_insert) {
         break;
@@ -154,6 +154,7 @@ static void seq_merge_sorted_ranges(SequentialList *list, int32_t *merge_buffer,
   int left_index = low;
   int right_index = middle + 1;
   int output_index = low;
+  int first_moved_idx = -1;
 
   while (left_index <= middle && right_index <= high) {
     int32_t left_val = seq_val_at(list, left_index);
@@ -164,25 +165,28 @@ static void seq_merge_sorted_ranges(SequentialList *list, int32_t *merge_buffer,
       merge_buffer[output_index++] = left_val;
       left_index++;
     } else {
+      if (first_moved_idx == -1) {
+        first_moved_idx = output_index;
+      }
       merge_buffer[output_index++] = right_val;
       right_index++;
     }
+  }
+
+  if (first_moved_idx == -1) {
+    return;
   }
 
   while (left_index <= middle) {
     merge_buffer[output_index++] = seq_val_at(list, left_index++);
   }
 
-  while (right_index <= high) {
-    merge_buffer[output_index++] = seq_val_at(list, right_index++);
-  }
-
-  for (int index = low; index <= high; index++) {
+  for (int index = first_moved_idx; index < output_index; index++) {
     seq_write_value_at(list, index, merge_buffer[index], 1, obs);
   }
 }
 
-static void seq_merge_sort_range(SequentialList *list, int32_t *merge_buffer,int low, int high, const ListSortObserver *obs) {
+static void seq_merge_sort_range(SequentialList *list, int32_t *merge_buffer, int low, int high, const ListSortObserver *obs) {
   if (low >= high) {
     return;
   }
@@ -198,26 +202,28 @@ int seq_list_sort(SequentialList *list, int algorithm, const ListSortObserver *o
     *out_aux_memory_bytes = 0;
   }
 
-  if (list == NULL || seq_list_size(list) < 1 || seq_list_element_size(list) != sizeof(int32_t)) {
+  if (list == NULL || seq_list_size(list) < 1 ||
+      seq_list_element_size(list) != sizeof(int32_t) ||
+      algorithm < ALGORITHM_BUBBLE || algorithm > ALGORITHM_MERGE) {
     return 0;
   }
 
   int item_count = seq_list_size(list);
 
   switch (algorithm) {
-    case 0:
+    case ALGORITHM_BUBBLE:
       seq_bubble_sort(list, observer);
       break;
-    case 1:
+    case ALGORITHM_SELECTION:
       seq_selection_sort(list, observer);
       break;
-    case 2:
+    case ALGORITHM_INSERTION:
       seq_insertion_sort(list, observer);
       break;
-    case 3:
+    case ALGORITHM_QUICK:
       seq_quick_sort_range(list, 0, item_count - 1, observer);
       break;
-    case 4: {
+    case ALGORITHM_MERGE: {
       size_t aux_bytes = (size_t) item_count * sizeof(int32_t);
       int32_t *merge_buffer = (int32_t *) malloc(aux_bytes);
 

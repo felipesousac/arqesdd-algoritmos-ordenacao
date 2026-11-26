@@ -41,7 +41,7 @@ flowchart LR
 
 ## 2. Layered Design
 
-Dependencies point downward only: an upper layer may use a lower one, never the reverse.
+Dependencies flow primarily downward from presentation to ADTs. As a pragmatic exception for domain-typed storage, `hash_table` (in `src/tad/`) references `Metrics` and `Operation` from `sort_engine.h` to store full `TestReport` snapshots, while `list_sort_observer.h` exposes the shared `SortAlgorithm` enum downward to all list sorting implementations.
 
 | Layer | Location | Responsibility |
 | :--- | :--- | :--- |
@@ -94,9 +94,9 @@ All ADTs are **opaque**: the header declares `typedef struct name Name;` and the
 | `circular_linked_list` | `CircularLinkedList` | Singly linked ring, invariant `tail->next == head`. | Sorted while preserving the ring. |
 | `queue` | `Queue`, `BatchTask` | Linked FIFO with `front` and `rear`. | Holds the pending tests of a batch. |
 | `hash_table` | `HashTable`, `TestReport` | Dynamic bucket array of linked `HashNode` chains, DJB2 hash on the algorithm name. | Stores every executed test for later lookup. |
-| `list_sort_observer` | `ListSortObserver` | Struct of callbacks: `on_compare`, `on_swap`, `on_write`. | Decouples the sorting code from metrics and logging (see 6.1). |
+| `list_sort_observer` | `ListSortObserver`, `SortAlgorithm` | Struct of callbacks (`on_compare`, `on_swap`, `on_write`) and shared algorithm IDs. | Decouples the sorting code from metrics and logging (see 6.1). |
 
-**Hash table details.** The initial size is 11 buckets. Before inserting into an empty bucket, if `(occupied_buckets + 1) / buckets > 0.75`, the bucket array is grown to `2n + 1` with `realloc` and every node is rehashed. Each insert stores a **deep copy** of the report (input, sorted values and operations are copied), so the engine can free its own buffers right after recording. Test IDs are sequential, starting at 1.
+**Hash table details.** The initial size is 11 buckets, indexed case-insensitively by algorithm name using DJB2 with separate chaining. Before inserting into an empty bucket, if `(occupied_buckets + 1) / buckets > 0.75`, the bucket array is grown to `2n + 1` with `realloc` and every node is rehashed. Because the system currently has 5 fixed algorithm names, at most 5 buckets can be occupied (`5 / 11 ≈ 0.45 <= 0.75`), so resizing is never triggered in current runs — all reports accumulate in up to 5 chains, and `hash_table_get_by_id` scans the chains linearly — while keeping the rehashing logic ready if more algorithms or finer-grained keys are added in the future. Each insert stores a **deep copy** of the `TestReport` (including `Metrics`, input, sorted values and `Operation` log from `sort_engine.h`), so the engine can free its own buffers right after recording. Test IDs are sequential, starting at 1.
 
 ### 4.2 Engine (`src/sort_engine.*`)
 

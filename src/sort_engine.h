@@ -1,6 +1,7 @@
 #ifndef SORT_ENGINE_H
 #define SORT_ENGINE_H
 
+#include "tad/headerFiles/list_sort_observer.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -27,14 +28,6 @@ enum {
   OPERATION_COMPARE = 0,
   OPERATION_SWAP = 1,
   OPERATION_WRITE = 2
-};
-
-enum {
-  ALGORITHM_BUBBLE = 0,
-  ALGORITHM_SELECTION = 1,
-  ALGORITHM_INSERTION = 2,
-  ALGORITHM_QUICK = 3,
-  ALGORITHM_MERGE = 4
 };
 
 enum {

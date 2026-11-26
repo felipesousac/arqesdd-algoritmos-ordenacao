@@ -7,21 +7,6 @@ char *json_serialize_sort_result(uint64_t test_id, const int32_t *input,
   JsonBuilder json;
   json_builder_init(&json);
 
-  SequentialList *history = seq_list_create_with_capacity(
-      sizeof(Operation),
-      metrics->operation_count > 0 ? metrics->operation_count : 8);
-
-  if (!history) {
-    return NULL;
-  }
-
-  for (int i = 0; i < metrics->operation_count; i++) {
-    if (!seq_list_insert_end(history, &operations[i])) {
-      json.failed = 1;
-      break;
-    }
-  }
-
   json_builder_append(&json,
                       "{\"testId\":%llu,\"algorithm\":%d,\"algorithmName\":\"%s\","
                       "\"structure\":%d,\"structureName\":\"%s\",\"input\":[",
@@ -53,28 +38,24 @@ char *json_serialize_sort_result(uint64_t test_id, const int32_t *input,
                       metrics->memory_bytes, 
                       metrics->operation_count);
 
-  for (int i = 0; i < seq_list_size(history); i++) {
-    Operation operation;
+  if (operations != NULL) {
+    for (int i = 0; i < metrics->operation_count; i++) {
+      const Operation *operation = &operations[i];
 
-    if (!seq_list_get(history, i, &operation)) {
-      json.failed = 1;
-      break;
+      json_builder_append(&json,
+                          "%s{\"type\":%d,\"firstIndex\":%d,"
+                          "\"secondIndex\":%d,\"firstValue\":%d,"
+                          "\"secondValue\":%d}",
+                          i ? "," : "",
+                          operation->type,
+                          operation->first_index,
+                          operation->second_index,
+                          operation->first_value,
+                          operation->second_value);
     }
-
-    json_builder_append(&json,
-                        "%s{\"type\":%d,\"firstIndex\":%d,"
-                        "\"secondIndex\":%d,\"firstValue\":%d,"
-                        "\"secondValue\":%d}",
-                        i ? "," : "", 
-                        operation.type, 
-                        operation.first_index,
-                        operation.second_index, 
-                        operation.first_value,
-                        operation.second_value);
   }
 
   json_builder_append(&json, "]}");
-  seq_list_destroy(history);
 
   return json_builder_detach(&json);
 }

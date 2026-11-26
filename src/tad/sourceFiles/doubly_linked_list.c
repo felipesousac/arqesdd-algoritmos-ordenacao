@@ -458,8 +458,6 @@ static void doubly_insertion_sort(DoublyLinkedList *list, const ListSortObserver
         break;
       }
 
-      emit_write(obs, previous_position + 1, scan->data, 1);
-
       scan = scan->prev;
       previous_position--;
     }
@@ -497,7 +495,15 @@ static void doubly_insertion_sort(DoublyLinkedList *list, const ListSortObserver
         scan->next = curr;
       }
 
-      emit_write(obs, target_index, value_to_insert, 0);
+      /* Count 1 swap for the node insertion, then sync shifted bar positions */
+      emit_write(obs, target_index, value_to_insert, 1);
+
+      DoublyNode *sync = curr->next;
+
+      for (int idx = target_index + 1; idx <= position && sync != NULL; idx++) {
+        emit_write(obs, idx, sync->data, 0);
+        sync = sync->next;
+      }
     } else {
       last_sorted = curr;
     }
@@ -505,12 +511,13 @@ static void doubly_insertion_sort(DoublyLinkedList *list, const ListSortObserver
 }
 
 static int doubly_partition(DoublyLinkedList *list, int low, int high, const ListSortObserver *obs) {
+  DoublyNode *scan_node = doubly_node_at(list, low);
   DoublyNode *high_node = doubly_node_at(list, high);
   int32_t pivot_value = high_node->data;
   int last_smaller_index = low - 1;
 
   for (int scan_index = low; scan_index < high; scan_index++) {
-    DoublyNode *scan_node = doubly_node_at(list, scan_index);
+    DoublyNode *next_scan = scan_node->next;
 
     emit_compare(obs, scan_index, high, scan_node->data, pivot_value);
 
@@ -519,6 +526,8 @@ static int doubly_partition(DoublyLinkedList *list, int low, int high, const Lis
 
       doubly_swap_nodes_by_index(list, last_smaller_index, scan_index, obs);
     }
+
+    scan_node = next_scan;
   }
 
   int pivot_index = last_smaller_index + 1;
@@ -569,6 +578,8 @@ static DoublyNode *doubly_merge_sort_nodes(DoublyNode *head, int low, int high, 
 
   int left_index = low;
   int right_index = middle + 1;
+  int output_index = low;
+  int first_moved_idx = -1;
 
   DoublyNode *left_curr = left_sorted;
   DoublyNode *right_curr = right_sorted;
@@ -582,17 +593,26 @@ static DoublyNode *doubly_merge_sort_nodes(DoublyNode *head, int low, int high, 
       left_curr = left_curr->next;
       left_index++;
     } else {
+      if (first_moved_idx == -1) {
+        first_moved_idx = output_index;
+      }
+      
       tail->next = right_curr;
       right_curr->prev = tail;
       right_curr = right_curr->next;
       right_index++;
     }
 
+    output_index++;
     tail = tail->next;
   }
 
   DoublyNode *remainder = (left_curr != NULL) ? left_curr : right_curr;
   tail->next = remainder;
+
+  if (left_curr != NULL) {
+    output_index = high + 1;
+  }
 
   if (remainder != NULL) {
     remainder->prev = tail;
@@ -602,11 +622,17 @@ static DoublyNode *doubly_merge_sort_nodes(DoublyNode *head, int low, int high, 
     temp_head.next->prev = NULL;
   }
 
-  DoublyNode *scan = temp_head.next;
+  if (first_moved_idx != -1) {
+    DoublyNode *scan = temp_head.next;
 
-  for (int idx = low; idx <= high && scan != NULL; idx++) {
-    emit_write(obs, idx, scan->data, 1);
-    scan = scan->next;
+    for (int idx = low; idx < first_moved_idx && scan != NULL; idx++) {
+      scan = scan->next;
+    }
+
+    for (int idx = first_moved_idx; idx < output_index && scan != NULL; idx++) {
+      emit_write(obs, idx, scan->data, 1);
+      scan = scan->next;
+    }
   }
 
   return temp_head.next;
@@ -625,7 +651,8 @@ static void doubly_merge_sort(DoublyLinkedList *list, const ListSortObserver *ob
 }
 
 int doubly_list_sort(DoublyLinkedList *list, int algorithm, const ListSortObserver *observer) {
-  if (list == NULL || list->size < 1 || algorithm < 0 || algorithm > 4) {
+  if (list == NULL || list->size < 1 || algorithm < ALGORITHM_BUBBLE ||
+      algorithm > ALGORITHM_MERGE) {
     return 0;
   }
 
@@ -634,19 +661,19 @@ int doubly_list_sort(DoublyLinkedList *list, int algorithm, const ListSortObserv
   }
 
   switch (algorithm) {
-    case 0:
+    case ALGORITHM_BUBBLE:
       doubly_bubble_sort(list, observer);
       break;
-    case 1:
+    case ALGORITHM_SELECTION:
       doubly_selection_sort(list, observer);
       break;
-    case 2:
+    case ALGORITHM_INSERTION:
       doubly_insertion_sort(list, observer);
       break;
-    case 3:
+    case ALGORITHM_QUICK:
       doubly_quick_sort_range(list, 0, list->size - 1, observer);
       break;
-    case 4:
+    case ALGORITHM_MERGE:
       doubly_merge_sort(list, observer);
       break;
     default:

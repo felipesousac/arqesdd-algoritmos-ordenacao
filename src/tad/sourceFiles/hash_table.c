@@ -289,7 +289,10 @@ SequentialList *hash_table_search_by_algorithm(const HashTable *table, const cha
       if (strings_equal_ignore_case(curr->report.algorithm_name, algorithm_name)) {
         const TestReport *temp = &curr->report;
 
-        seq_list_insert_end(results, &temp);
+        if (!seq_list_insert_end(results, &temp)) {
+          seq_list_destroy(results);
+          return NULL;
+        }
       }
 
       curr = curr->next;
@@ -301,7 +304,12 @@ SequentialList *hash_table_search_by_algorithm(const HashTable *table, const cha
 
       while (curr != NULL) {
         const TestReport *temp = &curr->report;
-        seq_list_insert_end(results, &temp);
+
+        if (!seq_list_insert_end(results, &temp)) {
+          seq_list_destroy(results);
+          return NULL;
+        }
+
         curr = curr->next;
       }
     }
