@@ -44,8 +44,7 @@ enum {
   STRUCT_CIRCULAR = 3
 };
 
-int sort_run(const int32_t *input, int item_count, int algorithm,
-             int structure_type, int requested_operation_limit);
+int sort_run(const int32_t *input, int item_count, int algorithm, int structure_type, int requested_operation_limit);
 const int32_t *sort_values(void);
 const Metrics *sort_metrics(void);
 const Operation *sort_operations(void);

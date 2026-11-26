@@ -5,12 +5,10 @@
 
 #define SEQ_LIST_INITIAL_CAPACITY 8
 
-/* Opaque type for Dynamic Contiguous Sequential List */
 typedef struct sequential_list SequentialList;
 
 SequentialList *seq_list_create(size_t element_size);
-SequentialList *seq_list_create_with_capacity(size_t element_size,
-                                              int initial_capacity);
+SequentialList *seq_list_create_with_capacity(size_t element_size, int initial_capacity);
 int seq_list_insert_end(SequentialList *list, const void *element);
 int seq_list_insert_start(SequentialList *list, const void *element);
 int seq_list_remove_at(SequentialList *list, int index);

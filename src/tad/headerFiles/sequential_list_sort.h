@@ -5,9 +5,6 @@
 #include "sequential_list.h"
 #include <stddef.h>
 
-/* Sorting algorithms on a SequentialList storing int32_t elements */
-int seq_list_sort(SequentialList *list, int algorithm,
-                  const ListSortObserver *observer,
-                  size_t *out_aux_memory_bytes);
+int seq_list_sort(SequentialList *list, int algorithm, const ListSortObserver *observer, size_t *out_aux_memory_bytes);
 
 #endif

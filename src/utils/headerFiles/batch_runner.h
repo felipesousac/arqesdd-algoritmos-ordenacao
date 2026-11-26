@@ -11,9 +11,6 @@ typedef enum {
   BATCH_ERR_SERIALIZE = 3
 } BatchStatus;
 
-BatchStatus batch_runner_execute(const int32_t *values, int count,
-                                 const SequentialList *alg_ids,
-                                 const SequentialList *struct_ids,
-                                 int operation_limit, char **out_json);
+BatchStatus batch_runner_execute(const int32_t *values, int count, const SequentialList *alg_ids, const SequentialList *struct_ids, int operation_limit, char **out_json);
 
 #endif

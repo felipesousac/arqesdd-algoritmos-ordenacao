@@ -11,7 +11,6 @@ typedef struct {
   int item_count;
 } BatchTask;
 
-/* Opaque type for Dynamic Linked Queue */
 typedef struct queue Queue;
 
 Queue *queue_create(void);

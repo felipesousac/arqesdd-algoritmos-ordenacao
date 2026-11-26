@@ -20,16 +20,12 @@ typedef struct {
   Operation *operations;
 } TestReport;
 
-/* Opaque type for Dynamic Hash Table with Separate Chaining */
 typedef struct hash_table HashTable;
 
 HashTable *hash_table_create(size_t initial_bucket_count);
-uint64_t hash_table_insert(HashTable *table, const char *algorithm_name,
-                           const TestReport *report);
-SequentialList *hash_table_search_by_algorithm(const HashTable *table,
-                                               const char *algorithm_name);
-const TestReport *hash_table_get_by_id(const HashTable *table,
-                                       uint64_t test_id);
+uint64_t hash_table_insert(HashTable *table, const char *algorithm_name, const TestReport *report);
+SequentialList *hash_table_search_by_algorithm(const HashTable *table, const char *algorithm_name);
+const TestReport *hash_table_get_by_id(const HashTable *table, uint64_t test_id);
 size_t hash_table_count(const HashTable *table);
 size_t hash_table_bucket_count(const HashTable *table);
 size_t hash_table_occupied_bucket_count(const HashTable *table);
